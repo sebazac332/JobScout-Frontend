@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Job Search App",
+  title: "JobScout",
   description: "Find your dream job",
     generator: 'v0.app'
 }
