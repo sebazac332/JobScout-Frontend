@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import type { User } from "@/lib/types"
-import { getStoredUser, login as authLogin, logout as authLogout, register as authRegister } from "@/lib/auth"
+import { 
+  getStoredUser, 
+  login as authLogin, 
+  logout as authLogout, 
+  register as authRegister 
+} from "@/lib/auth"
 
-// Event emitter para sincronizar estado entre componentes
 const AUTH_CHANGE_EVENT = "auth-change"
 
 function emitAuthChange() {
@@ -13,7 +18,9 @@ function emitAuthChange() {
   }
 }
 
-export function useAuth() {
+export function useAuth(options?: { redirectTo?: string; requireAuth?: boolean }) {
+  const router = useRouter()
+
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -25,7 +32,6 @@ export function useAuth() {
     setIsLoading(false)
   }, [])
 
-  // Escutar mudanças de autenticação de outros componentes
   useEffect(() => {
     if (!mounted) return
 
@@ -38,12 +44,22 @@ export function useAuth() {
     return () => window.removeEventListener(AUTH_CHANGE_EVENT, handleAuthChange)
   }, [mounted])
 
+  useEffect(() => {
+    if (!mounted || isLoading) return
+    if (options?.requireAuth && !user) {
+      router.replace(options.redirectTo || "/login")
+    }
+  }, [mounted, isLoading, user])
+
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
       const user = await authLogin(email, password)
       setUser(user)
       emitAuthChange()
+
+      router.replace(options?.redirectTo || "/dashboard")
+
       return user
     } catch (error) {
       throw error
@@ -69,6 +85,9 @@ export function useAuth() {
       const user = await authRegister(email, password, name, cpf, role, additionalFields)
       setUser(user)
       emitAuthChange()
+
+      router.replace("/dashboard")
+
       return user
     } catch (error) {
       throw error
@@ -81,6 +100,8 @@ export function useAuth() {
     authLogout()
     setUser(null)
     emitAuthChange()
+
+    router.replace("/login")
   }
 
   return {

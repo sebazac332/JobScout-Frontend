@@ -1,12 +1,6 @@
 "use client"
 
 import type { User } from "./types"
-import { mockUsers } from "./mock-data"
-
-export interface AuthState {
-  user: User | null
-  isLoading: boolean
-}
 
 export const getStoredUser = (): User | null => {
   if (typeof window === "undefined") return null
@@ -26,28 +20,55 @@ export const setStoredUser = (user: User | null) => {
 }
 
 export const login = async (email: string, password: string): Promise<User> => {
-  console.log("[v0] Tentando login com email:", email)
-  console.log(
-    "[v0] Usuários disponíveis:",
-    mockUsers.map((u) => u.email),
-  )
+  const formData = new URLSearchParams()
+  formData.append("username", email)
+  formData.append("password", password)
 
-  // Simular delay de API
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  const res = await fetch("http://localhost:8000/auth/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: formData.toString(),
+  })
 
-  const user = mockUsers.find((u) => u.email === email)
-
-  console.log("[v0] Usuário encontrado:", user)
-
-  if (!user) {
-    console.log("[v0] Erro: Usuário não encontrado")
-    throw new Error("Usuário não encontrado")
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.detail || "Erro ao efetuar login")
   }
 
-  // Em um app real, verificaríamos a senha
-  setStoredUser(user)
-  console.log("[v0] Usuário armazenado no localStorage")
-  return user
+  const { access_token } = await res.json()
+
+  const verifyRes = await fetch(
+    `http://localhost:8000/auth/verify?token=${access_token}`
+  )
+  const verifyData = await verifyRes.json()
+
+  const role = verifyData.role as "admin" | "user"
+
+  const profileRes = await fetch(
+    role === "admin"
+      ? "http://localhost:8000/admins/me"
+      : "http://localhost:8000/users/me",
+    {
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+      },
+    }
+  )
+
+  if (!profileRes.ok) {
+    throw new Error("Erro ao carregar perfil do usuário")
+  }
+
+  const profile = await profileRes.json()
+
+  const fullUser: User = {
+    ...profile,
+    role,
+    token: access_token,
+  }
+
+  setStoredUser(fullUser)
+  return fullUser
 }
 
 export const logout = () => {
@@ -64,31 +85,29 @@ export const register = async (
     phone?: string
     workArea?: string
     educationLevel?: string
-  },
+  }
 ): Promise<User> => {
-  // Simular delay de API
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  const url =
+    role === "admin"
+      ? "http://localhost:8000/admins"
+      : "http://localhost:8000/users"
 
-  const existingUser = mockUsers.find((u) => u.email === email)
-  if (existingUser) {
-    throw new Error("Email já cadastrado")
-  }
-
-  const newUser: User = {
-    id: Date.now().toString(),
-    email,
-    name,
-    cpf,
-    role,
-    ...(role === "admin" && { phone: additionalFields?.phone }),
-    ...(role === "user" && {
-      workArea: additionalFields?.workArea,
-      educationLevel: additionalFields?.educationLevel,
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      nome: name,
+      email,
+      cpf,
+      password,
+      ...additionalFields,
     }),
-    createdAt: new Date().toISOString(),
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}))
+    throw new Error(error.detail || "Erro ao registrar usuário")
   }
 
-  mockUsers.push(newUser)
-  setStoredUser(newUser)
-  return newUser
+  return login(email, password)
 }

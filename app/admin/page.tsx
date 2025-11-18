@@ -1,11 +1,43 @@
 "use client"
 
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
+
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Briefcase, Users, TrendingUp } from "lucide-react"
 import { mockCompanies, mockJobs, mockApplications } from "@/lib/mock-data"
 
 export default function AdminDashboard() {
+
+  const router = useRouter()
+
+  const { user, isLoading, isAdmin } = useAuth()
+
+  useEffect(() => {
+    if (isLoading) return
+
+    if (!user) {
+      router.replace("/login")
+      return
+    }
+
+    if (!isAdmin) {
+      router.replace("/unauthorized")
+      return
+    }
+  }, [isLoading, user, isAdmin, router])
+
+  if (isLoading) {
+    return <p>Carregando...</p>
+  }
+
+  // Avoid flickering while redirecting
+  if (!user || !isAdmin) {
+    return null
+  }
+
   const stats = [
     {
       title: "Total de Empresas",

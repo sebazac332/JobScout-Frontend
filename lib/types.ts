@@ -2,12 +2,13 @@ export interface User {
   id: string
   email: string
   name: string
-  role: "admin" | "user"
   cpf: string
+  role: "user" | "admin"
+  token: string
+  createdAt: string
   phone?: string
   workArea?: string
   educationLevel?: string
-  createdAt: string
 }
 
 export interface Company {
