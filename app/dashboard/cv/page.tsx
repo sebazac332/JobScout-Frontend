@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { FileText, Edit, Plus } from "lucide-react"
 import { mockCVs } from "@/lib/mock-data"
 import type { CV } from "@/lib/types"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function CVPage() {
   const { user } = useAuth()

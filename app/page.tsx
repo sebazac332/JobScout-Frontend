@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from 'next/navigation'
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Briefcase, Users, Search, FileText } from 'lucide-react'

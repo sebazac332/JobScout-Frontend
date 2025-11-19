@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Briefcase, Building2, MapPin, Calendar, Eye } from "lucide-react"
 import { mockApplications, mockJobs, mockCompanies } from "@/lib/mock-data"
 import type { Application } from "@/lib/types"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function ApplicationsPage() {
   const { user } = useAuth()

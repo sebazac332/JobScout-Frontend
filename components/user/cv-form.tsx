@@ -13,7 +13,7 @@ import { X, Plus, Trash2 } from "lucide-react"
 import type { CV, Experience, Education } from "@/lib/types"
 import { mockCVs } from "@/lib/mock-data"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/useAuth"
 
 interface CVFormProps {
   cv?: CV

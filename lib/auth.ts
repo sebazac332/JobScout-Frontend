@@ -24,7 +24,7 @@ export const login = async (email: string, password: string): Promise<User> => {
   formData.append("username", email)
   formData.append("password", password)
 
-  const res = await fetch("http://localhost:8000/auth/token", {
+  const res = await fetch("http://localhost:8001/auth/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData.toString(),
@@ -89,19 +89,32 @@ export const register = async (
 ): Promise<User> => {
   const url =
     role === "admin"
-      ? "http://localhost:8000/admins"
-      : "http://localhost:8000/users"
+      ? "http://localhost:8000/admins/"
+      : "http://localhost:8000/users/"
+
+  const payload =
+    role === "admin"
+      ? {
+          nome: name,
+          email,
+          cpf,
+          telefone: additionalFields?.phone ?? "",
+          password,
+        }
+      : {
+          nome: name,
+          email,
+          cpf,
+          telefone: additionalFields?.phone ?? "",
+          area_trabalho: additionalFields?.workArea ?? "",
+          nivel_educacao: additionalFields?.educationLevel ?? "",
+          password,
+        }
 
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      nome: name,
-      email,
-      cpf,
-      password,
-      ...additionalFields,
-    }),
+    body: JSON.stringify(payload),
   })
 
   if (!res.ok) {

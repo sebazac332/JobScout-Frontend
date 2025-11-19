@@ -3,7 +3,7 @@ import { UserLayout } from "@/components/user/user-layout"
 import { JobSearch } from "@/components/user/job-search"
 import type { Job } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/hooks/useAuth"
 import { mockApplications, mockCVs } from "@/lib/mock-data"
 
 export default function DashboardPage() {
