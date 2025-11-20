@@ -38,7 +38,7 @@ export const login = async (email: string, password: string): Promise<User> => {
   const { access_token } = await res.json()
 
   const verifyRes = await fetch(
-    `http://localhost:8000/auth/verify?token=${access_token}`
+    `http://localhost:8001/auth/verify?token=${access_token}`
   )
   const verifyData = await verifyRes.json()
 

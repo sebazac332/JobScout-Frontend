@@ -101,7 +101,7 @@ export function useAuth(options?: { redirectTo?: string; requireAuth?: boolean }
     setUser(null)
     emitAuthChange()
 
-    router.replace("/login")
+    router.replace("/auth")
   }
 
   return {
