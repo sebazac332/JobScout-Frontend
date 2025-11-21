@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -15,11 +15,16 @@ export default function AdminDashboard() {
 
   const { user, isLoading, isAdmin } = useAuth()
 
+  const [companies, setCompanies] = useState([])
+  const [jobs, setJobs] = useState([])
+  const [applications, setApplications] = useState([])
+  const [loadingData, setLoadingData] = useState(true)
+
   useEffect(() => {
     if (isLoading) return
 
     if (!user) {
-      router.replace("/login")
+      router.replace("/auth")
       return
     }
 
@@ -27,13 +32,73 @@ export default function AdminDashboard() {
       router.replace("/unauthorized")
       return
     }
+
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token")
+
+        const [companiesRes, jobsRes, applicationsRes] = await Promise.all([
+          fetch("http://localhost:8000/empresas", {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch("http://localhost:8000/vagas", {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+          fetch("http://localhost:8000/vagas/with-applications", {
+            headers: { Authorization: `Bearer ${token}` }
+          }),
+        ])
+
+        const [companiesData, jobsData, applicationsData] = await Promise.all([
+          companiesRes.json(),
+          jobsRes.json(),
+          applicationsRes.json(),
+        ])
+
+        const companiesTransformed = companiesData.map(c => ({
+        id: c.id,
+        name: c.nome,
+        description: c.descricao,
+        city: c.cidade,
+        employees: c.no_empregados,
+        years: c.anos_func,
+      }))
+
+      const jobsTransformed = jobsData.map(j => ({
+        id: j.id,
+        title: j.titulo,
+        description: j.descricao,
+        modality: j.modalidade,
+        salary: j.salario,
+        numberOfPositions: j.no_vagas,
+        companyId: j.empresa_id,
+        users: j.users || [],
+      }))
+
+      const applicationsFlattened = applicationsData.flatMap(vaga => (vaga.users || []).map(user => ({
+        vagaId: vaga.id,
+        vagaTitle: vaga.titulo,
+        userId: user.id,
+        userName: user.name,
+      })))
+
+        setCompanies(companiesTransformed)
+        setJobs(jobsTransformed)
+        setApplications(applicationsFlattened)
+      } catch (err) {
+        console.error("Erro ao buscar dados do backend:", err)
+      } finally {
+        setLoadingData(false)
+      }
+    }
+
+    fetchData()
   }, [isLoading, user, isAdmin, router])
 
   if (isLoading) {
     return <p>Carregando...</p>
   }
 
-  // Avoid flickering while redirecting
   if (!user || !isAdmin) {
     return null
   }
@@ -41,28 +106,28 @@ export default function AdminDashboard() {
   const stats = [
     {
       title: "Total de Empresas",
-      value: mockCompanies.length,
+      value: companies.length,
       description: "Empresas cadastradas",
       icon: Building2,
       color: "text-blue-600",
     },
     {
       title: "Vagas Ativas",
-      value: mockJobs.filter((job) => job.isActive).length,
+      value: jobs.length,
       description: "Vagas disponíveis",
       icon: Briefcase,
       color: "text-green-600",
     },
     {
       title: "Candidaturas",
-      value: mockApplications.length,
+      value: applications.length,
       description: "Total de candidaturas",
       icon: Users,
       color: "text-purple-600",
     },
     {
       title: "Taxa de Conversão",
-      value: "12%",
+      value: "Not sure if i will include this",
       description: "Candidaturas aceitas",
       icon: TrendingUp,
       color: "text-orange-600",
@@ -102,7 +167,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockCompanies.slice(0, 3).map((company) => (
+                {companies.slice(0, 3).map((company) => (
                   <div key={company.id} className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                       <Building2 className="h-5 w-5 text-primary" />
@@ -124,7 +189,7 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockJobs.slice(0, 3).map((job) => (
+                {jobs.slice(0, 3).map((job) => (
                   <div key={job.id} className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                       <Briefcase className="h-5 w-5 text-green-600" />
@@ -132,7 +197,7 @@ export default function AdminDashboard() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">{job.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {job.location} • {job.type}
+                        {job.salary} • {job.modality}
                       </p>
                     </div>
                   </div>

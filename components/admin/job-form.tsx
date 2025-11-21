@@ -1,102 +1,58 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { X } from "lucide-react"
-import type { Job } from "@/lib/types"
-import { mockJobs, mockCompanies } from "@/lib/mock-data"
-import { useToast } from "@/hooks/use-toast"
+import type { Job, Company } from "@/lib/types"
 
 interface JobFormProps {
   job?: Job
+  companies: Company[]
   onSave: (job: Job) => void
   onCancel: () => void
 }
 
-export function JobForm({ job, onSave, onCancel }: JobFormProps) {
+export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
   const [formData, setFormData] = useState({
     title: job?.title || "",
     description: job?.description || "",
-    salary: job?.salary || "",
-    location: job?.location || "",
-    type: job?.type || ("full-time" as const),
-    companyId: job?.companyId || "",
-    requirements: job?.requirements || [],
+    salary: job?.salary || 0,
+    type: job?.type || "presencial",
+    positions: job?.positions || 1,
+    companyId: job?.companyId || companies[0]?.id || 0,
   })
+
+  // NEW: requirements state
+  const [requirements, setRequirements] = useState<string[]>(job?.requirements || [])
   const [newRequirement, setNewRequirement] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const { toast } = useToast()
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      // Simular delay de API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const newJob: Job = {
-        id: job?.id || Date.now().toString(),
-        title: formData.title,
-        description: formData.description,
-        requirements: formData.requirements,
-        salary: formData.salary || undefined,
-        location: formData.location,
-        type: formData.type,
-        companyId: formData.companyId,
-        createdAt: job?.createdAt || new Date().toISOString(),
-        isActive: job?.isActive ?? true,
-      }
-
-      if (job) {
-        // Atualizar vaga existente
-        const index = mockJobs.findIndex((j) => j.id === job.id)
-        if (index !== -1) {
-          mockJobs[index] = newJob
-        }
-      } else {
-        // Adicionar nova vaga
-        mockJobs.push(newJob)
-      }
-
-      onSave(newJob)
-      toast({
-        title: job ? "Vaga atualizada!" : "Vaga criada!",
-        description: `${newJob.title} foi ${job ? "atualizada" : "criada"} com sucesso.`,
-      })
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Ocorreu um erro ao salvar a vaga.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const addRequirement = () => {
-    if (newRequirement.trim() && !formData.requirements.includes(newRequirement.trim())) {
-      setFormData({
-        ...formData,
-        requirements: [...formData.requirements, newRequirement.trim()],
-      })
+    const trimmed = newRequirement.trim()
+    if (trimmed && !requirements.includes(trimmed)) {
+      setRequirements([...requirements, trimmed])
       setNewRequirement("")
     }
   }
 
-  const removeRequirement = (requirement: string) => {
-    setFormData({
+  const removeRequirement = (req: string) => {
+    setRequirements(requirements.filter((r) => r !== req))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    onSave({
+      id: job?.id || Date.now(),
       ...formData,
-      requirements: formData.requirements.filter((r) => r !== requirement),
+      salary: Number(formData.salary),
+      positions: Number(formData.positions),
+      companyId: Number(formData.companyId),
+      requirements,
     })
   }
 
@@ -105,123 +61,134 @@ export function JobForm({ job, onSave, onCancel }: JobFormProps) {
       <CardHeader>
         <CardTitle>{job ? "Editar Vaga" : "Nova Vaga"}</CardTitle>
         <CardDescription>
-          {job ? "Atualize as informações da vaga" : "Cadastre uma nova vaga de emprego"}
+          {job ? "Atualize os detalhes da vaga" : "Crie uma nova vaga para sua empresa"}
         </CardDescription>
       </CardHeader>
+
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* TITLE */}
           <div className="space-y-2">
-            <Label htmlFor="company">Empresa *</Label>
-            <Select
-              value={formData.companyId}
-              onValueChange={(value) => setFormData({ ...formData, companyId: value })}
+            <Label htmlFor="title">Título *</Label>
+            <Input
+              id="title"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               required
+            />
+          </div>
+
+          {/* DESCRIPTION */}
+          <div className="space-y-2">
+            <Label htmlFor="description">Descrição *</Label>
+            <Textarea
+              id="description"
+              rows={4}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
+            />
+          </div>
+
+          {/* SALARY */}
+          <div className="space-y-2">
+            <Label htmlFor="salary">Salário *</Label>
+            <Input
+              id="salary"
+              type="number"
+              value={formData.salary}
+              onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })}
+              required
+            />
+          </div>
+
+          {/* TYPE */}
+          <div className="space-y-2">
+            <Label>Tipo de Vaga *</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(value) => setFormData({ ...formData, type: value as Job["type"] })}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Selecione uma empresa" />
+                <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
-                {mockCompanies.map((company) => (
-                  <SelectItem key={company.id} value={company.id}>
-                    {company.name}
+                <SelectItem value="presencial">Presencial</SelectItem>
+                <SelectItem value="hibrido">Híbrido</SelectItem>
+                <SelectItem value="remoto">Remoto</SelectItem>
+                <SelectItem value="estagio">Estágio</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* POSITIONS */}
+          <div className="space-y-2">
+            <Label htmlFor="positions">Número de Vagas *</Label>
+            <Input
+              id="positions"
+              type="number"
+              value={formData.positions}
+              onChange={(e) => setFormData({ ...formData, positions: Number(e.target.value) })}
+              required
+            />
+          </div>
+
+          {/* COMPANY */}
+          <div className="space-y-2">
+            <Label>Empresa *</Label>
+            <Select
+              value={formData.companyId.toString()}
+              onValueChange={(value) => setFormData({ ...formData, companyId: Number(value) })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a empresa" />
+              </SelectTrigger>
+              <SelectContent>
+                {companies.map((c) => (
+                  <SelectItem key={c.id} value={c.id.toString()}>
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
+          {/* REQUIREMENTS */}
           <div className="space-y-2">
-            <Label htmlFor="title">Título da vaga *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Ex: Desenvolvedor Frontend React"
-              required
-            />
-          </div>
+            <Label>Requisitos *</Label>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Descrição *</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Descreva as responsabilidades e o que a empresa oferece..."
-              rows={4}
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="location">Localização *</Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                placeholder="Ex: São Paulo, SP"
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="type">Tipo *</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: any) => setFormData({ ...formData, type: value })}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="full-time">Tempo Integral</SelectItem>
-                  <SelectItem value="part-time">Meio Período</SelectItem>
-                  <SelectItem value="contract">Contrato</SelectItem>
-                  <SelectItem value="remote">Remoto</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="salary">Salário</Label>
-            <Input
-              id="salary"
-              value={formData.salary}
-              onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
-              placeholder="Ex: R$ 8.000 - R$ 12.000"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Requisitos</Label>
+            {/* Add requirement input */}
             <div className="flex gap-2">
               <Input
+                placeholder="Adicionar requisito"
                 value={newRequirement}
                 onChange={(e) => setNewRequirement(e.target.value)}
-                placeholder="Ex: React, TypeScript..."
-                onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), addRequirement())}
               />
               <Button type="button" onClick={addRequirement}>
-                Adicionar
+                Add
               </Button>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {formData.requirements.map((requirement) => (
-                <Badge key={requirement} variant="secondary" className="flex items-center gap-1">
-                  {requirement}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => removeRequirement(requirement)} />
-                </Badge>
+
+            {/* List of requirements */}
+            <div className="flex flex-wrap gap-2 pt-2">
+              {requirements.map((req) => (
+                <div
+                  key={req}
+                  className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full text-sm"
+                >
+                  {req}
+                  <X
+                    className="h-4 w-4 cursor-pointer"
+                    onClick={() => removeRequirement(req)}
+                  />
+                </div>
               ))}
             </div>
           </div>
 
+          {/* BUTTONS */}
           <div className="flex gap-4 pt-4">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Salvando..." : job ? "Atualizar" : "Criar Vaga"}
-            </Button>
+            <Button type="submit">{job ? "Atualizar" : "Criar Vaga"}</Button>
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancelar
             </Button>

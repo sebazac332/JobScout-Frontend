@@ -12,26 +12,24 @@ export interface User {
 }
 
 export interface Company {
-  id: string
+  id: number
   name: string
   description: string
-  website?: string
-  logo?: string
-  createdAt: string
+  city: string
+  cep: string
+  employees: number
+  years: number
+  admin_id: number
 }
 
 export interface Job {
-  id: string
+  id: number
   title: string
   description: string
-  requirements: string[]
-  salary?: string
-  location: string
-  type: "full-time" | "part-time" | "contract" | "remote"
-  companyId: string
-  company?: Company
-  createdAt: string
-  isActive: boolean
+  salary: number
+  type: "presencial" | "hibrido" | "remoto" | "estagio"
+  positions: number
+  companyId: number
 }
 
 export interface CV {

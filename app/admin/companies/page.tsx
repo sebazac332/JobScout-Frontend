@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { CompanyForm } from "@/components/admin/company-form"
 import { Button } from "@/components/ui/button"
@@ -10,23 +10,134 @@ import { Building2, Plus, Edit, Trash2, ExternalLink } from "lucide-react"
 import { mockCompanies } from "@/lib/mock-data"
 import type { Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/useAuth"
+import { useRouter } from "next/navigation"
+import jwtDecode from "jwt-decode"
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState(mockCompanies)
+  const [companies, setCompanies] = useState<Company[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingCompany, setEditingCompany] = useState<Company | undefined>()
   const { toast } = useToast()
+  const { user, isLoading, isAdmin } = useAuth()
+  const router = useRouter()
 
-  const handleSave = (company: Company) => {
-    setCompanies((prev) => {
-      if (editingCompany) {
-        return prev.map((c) => (c.id === company.id ? company : c))
-      } else {
-        return [...prev, company]
+  useEffect(() => {
+    if (isLoading) return
+
+    if (!user) {
+      router.replace("/auth")
+      return
+    }
+
+    if (!isAdmin) {
+      router.replace("/unauthorized")
+      return
+    }
+  }, [isLoading, user, isAdmin, router])
+
+  useEffect(() => {
+  const fetchCompanies = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) return
+
+      const res = await fetch("http://localhost:8000/empresas", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+
+      const decoded: any = jwtDecode(token)
+      const adminId = decoded?.id
+
+      const transformed = data
+        .filter((c: any) => c.admin_id === adminId)
+        .map((c: any) => ({
+          id: c.id,
+          name: c.nome,
+          description: c.descricao,
+          city: c.cidade,
+          cep: c.cep,
+          employees: c.no_empregados,
+          years: c.anos_func,
+          admin_id: c.admin_id
+        }))
+
+      setCompanies(transformed)
+    } catch (err) {
+      console.error("Erro ao buscar empresas:", err)
+      toast({ title: "Erro", description: "Não foi possível carregar as empresas", variant: "destructive" })
+    }
+  }
+
+  fetchCompanies()
+}, [])
+
+  const handleSave = async (company: Company) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) throw new Error("Token não encontrado")
+
+      interface DecodedToken {
+        id: number
+        sub: string
+        role: string
       }
-    })
-    setShowForm(false)
-    setEditingCompany(undefined)
+
+      const decoded: any = jwtDecode<DecodedToken>(token)
+      const adminId = decoded.id
+
+      const companyToSave = { ...company, admin_id: adminId }
+
+      const method = editingCompany ? "PUT" : "POST"
+      const url = editingCompany
+        ? `http://localhost:8000/empresas/${company.id}`
+        : "http://localhost:8000/empresas"
+
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          nome: companyToSave.name,
+          descricao: companyToSave.description,
+          cidade: companyToSave.city,
+          cep: companyToSave.cep,
+          no_empregados: companyToSave.employees,
+          anos_func: companyToSave.years,
+          admin_id: companyToSave.admin_id,
+        }),
+      })
+
+      if (!res.ok) throw new Error("Erro ao salvar empresa")
+
+      const savedCompany = await res.json()
+      const transformed = {
+        id: savedCompany.id,
+        name: savedCompany.nome,
+        description: savedCompany.descricao,
+        city: savedCompany.cidade,
+        cep: savedCompany.cep,
+        employees: savedCompany.no_empregados,
+        years: savedCompany.anos_func,
+        admin_id: savedCompany.admin_id,
+      }
+
+      setCompanies(prev =>
+        editingCompany
+          ? prev.map(c => (c.id === transformed.id ? transformed : c))
+          : [...prev, transformed]
+      )
+
+      setShowForm(false)
+      setEditingCompany(undefined)
+      toast({ title: "Sucesso", description: "Empresa salva com sucesso" })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Não foi possível salvar a empresa", variant: "destructive" })
+    }
   }
 
   const handleEdit = (company: Company) => {
@@ -34,17 +145,23 @@ export default function CompaniesPage() {
     setShowForm(true)
   }
 
-  const handleDelete = (company: Company) => {
-    if (confirm(`Tem certeza que deseja excluir a empresa "${company.name}"?`)) {
-      setCompanies((prev) => prev.filter((c) => c.id !== company.id))
-      const index = mockCompanies.findIndex((c) => c.id === company.id)
-      if (index !== -1) {
-        mockCompanies.splice(index, 1)
-      }
-      toast({
-        title: "Empresa excluída",
-        description: `${company.name} foi removida do sistema.`,
+  const handleDelete = async (company: Company) => {
+    if (!confirm(`Tem certeza que deseja excluir a empresa "${company.name}"?`)) return
+
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`http://localhost:8000/empresas/${company.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       })
+
+      if (!res.ok) throw new Error("Erro ao excluir empresa")
+
+      setCompanies(prev => prev.filter(c => c.id !== company.id))
+      toast({ title: "Empresa excluída", description: `${company.name} foi removida do sistema.` })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Não foi possível excluir a empresa", variant: "destructive" })
     }
   }
 
@@ -97,21 +214,6 @@ export default function CompaniesPage() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="mb-4">{company.description}</CardDescription>
-
-                {company.website && (
-                  <div className="flex items-center text-sm text-muted-foreground mb-4">
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    <a
-                      href={company.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-foreground transition-colors"
-                    >
-                      {company.website}
-                    </a>
-                  </div>
-                )}
-
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleEdit(company)}>
                     <Edit className="h-4 w-4 mr-1" />

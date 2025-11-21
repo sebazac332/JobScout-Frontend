@@ -1,46 +1,136 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { JobForm } from "@/components/admin/job-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Briefcase, Plus, Edit, Trash2, MapPin, DollarSign } from "lucide-react"
-import { mockJobs, mockCompanies } from "@/lib/mock-data"
-import type { Job } from "@/lib/types"
+import type { Job, Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/useAuth"
+import { useRouter } from "next/navigation"
+import jwtDecode from "jwt-decode"
 
 export default function JobsPage() {
-  const [jobs, setJobs] = useState(mockJobs)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [showForm, setShowForm] = useState(false)
   const [editingJob, setEditingJob] = useState<Job | undefined>()
   const { toast } = useToast()
+  const { user, isLoading, isAdmin } = useAuth()
+  const router = useRouter()
 
-  const getCompanyName = (companyId: string) => {
-    return mockCompanies.find((c) => c.id === companyId)?.name || "Empresa não encontrada"
-  }
+  // Auth redirect
+  useEffect(() => {
+    if (isLoading) return
+    if (!user) router.replace("/auth")
+    if (!isAdmin) router.replace("/unauthorized")
+  }, [isLoading, user, isAdmin, router])
 
-  const getJobTypeLabel = (type: string) => {
-    const labels = {
-      "full-time": "Tempo Integral",
-      "part-time": "Meio Período",
-      contract: "Contrato",
-      remote: "Remoto",
-    }
-    return labels[type as keyof typeof labels] || type
-  }
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) return
 
-  const handleSave = (job: Job) => {
-    setJobs((prev) => {
-      if (editingJob) {
-        return prev.map((j) => (j.id === job.id ? job : j))
-      } else {
-        return [...prev, job]
+        const companiesRes = await fetch("http://localhost:8000/empresas", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const companiesData = await companiesRes.json()
+        const decoded: any = jwtDecode(token)
+        const adminId = decoded?.id
+
+        const adminCompanies = companiesData
+          .filter((c: any) => c.admin_id === adminId)
+          .map((c: any) => ({
+            id: c.id,
+            name: c.nome,
+            description: c.descricao,
+            city: c.cidade,
+            cep: c.cep,
+            employees: c.no_empregados,
+            years: c.anos_func,
+            admin_id: c.admin_id,
+          }))
+
+        setCompanies(adminCompanies)
+
+        const jobsRes = await fetch("http://localhost:8000/vagas", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const jobsData = await jobsRes.json()
+        const adminJobs = jobsData.filter((j: any) =>
+          adminCompanies.some((c) => c.id === j.empresa_id)
+        )
+
+        const transformedJobs: Job[] = adminJobs.map((j: any) => ({
+          id: j.id,
+          title: j.titulo,
+          description: j.descricao,
+          salary: j.salario,
+          type: j.tipo,
+          positions: j.vagas_disponiveis,
+          companyId: j.empresa_id,
+        }))
+
+        setJobs(transformedJobs)
+      } catch (err) {
+        console.error("Erro ao buscar dados:", err)
+        toast({ title: "Erro", description: "Não foi possível carregar os dados", variant: "destructive" })
       }
-    })
-    setShowForm(false)
-    setEditingJob(undefined)
+    }
+
+    fetchData()
+  }, [user])
+
+  const handleSave = async (job: Job) => {
+    try {
+      const token = localStorage.getItem("token")
+      if (!token) throw new Error("Token não encontrado")
+
+      const method = editingJob ? "PUT" : "POST"
+      const url = editingJob
+        ? `http://localhost:8000/vagas/${job.id}`
+        : "http://localhost:8000/vagas"
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          titulo: job.title,
+          descricao: job.description,
+          salario: job.salary,
+          tipo: job.type,
+          vagas_disponiveis: job.positions,
+          empresa_id: job.companyId,
+        }),
+      })
+
+      if (!res.ok) throw new Error("Erro ao salvar vaga")
+      const savedJob = await res.json()
+
+      const transformed: Job = {
+        id: savedJob.id,
+        title: savedJob.titulo,
+        description: savedJob.descricao,
+        salary: savedJob.salario,
+        type: savedJob.tipo,
+        positions: savedJob.vagas_disponiveis,
+        companyId: savedJob.empresa_id,
+      }
+
+      setJobs((prev) =>
+        editingJob ? prev.map((j) => (j.id === transformed.id ? transformed : j)) : [...prev, transformed]
+      )
+      setShowForm(false)
+      setEditingJob(undefined)
+      toast({ title: "Sucesso", description: "Vaga salva com sucesso" })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Não foi possível salvar a vaga", variant: "destructive" })
+    }
   }
 
   const handleEdit = (job: Job) => {
@@ -48,17 +138,20 @@ export default function JobsPage() {
     setShowForm(true)
   }
 
-  const handleDelete = (job: Job) => {
-    if (confirm(`Tem certeza que deseja excluir a vaga "${job.title}"?`)) {
-      setJobs((prev) => prev.filter((j) => j.id !== job.id))
-      const index = mockJobs.findIndex((j) => j.id === job.id)
-      if (index !== -1) {
-        mockJobs.splice(index, 1)
-      }
-      toast({
-        title: "Vaga excluída",
-        description: `${job.title} foi removida do sistema.`,
+  const handleDelete = async (job: Job) => {
+    if (!confirm(`Tem certeza que deseja excluir a vaga "${job.title}"?`)) return
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`http://localhost:8000/vagas/${job.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       })
+      if (!res.ok) throw new Error("Erro ao excluir vaga")
+      setJobs((prev) => prev.filter((j) => j.id !== job.id))
+      toast({ title: "Vaga excluída", description: `${job.title} foi removida.` })
+    } catch (err) {
+      console.error(err)
+      toast({ title: "Erro", description: "Não foi possível excluir a vaga", variant: "destructive" })
     }
   }
 
@@ -71,11 +164,13 @@ export default function JobsPage() {
     return (
       <AdminLayout>
         <div className="max-w-4xl">
-          <JobForm job={editingJob} onSave={handleSave} onCancel={handleCancel} />
+          <JobForm job={editingJob} companies={companies} onSave={handleSave} onCancel={handleCancel} />
         </div>
       </AdminLayout>
     )
   }
+
+  const getCompanyName = (companyId: number) => companies.find((c) => c.id === companyId)?.name || "Empresa não encontrada"
 
   return (
     <AdminLayout>
@@ -99,9 +194,7 @@ export default function JobsPage() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <CardTitle className="text-xl">{job.title}</CardTitle>
-                      <Badge variant={job.isActive ? "default" : "secondary"}>
-                        {job.isActive ? "Ativa" : "Inativa"}
-                      </Badge>
+                      <Badge variant="default">Ativa</Badge>
                     </div>
                     <CardDescription className="text-base">{getCompanyName(job.companyId)}</CardDescription>
                   </div>
@@ -124,36 +217,10 @@ export default function JobsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">{job.description}</p>
-
-                <div className="flex flex-wrap gap-4 mb-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    {job.location}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    {getJobTypeLabel(job.type)}
-                  </div>
-                  {job.salary && (
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      {job.salary}
-                    </div>
-                  )}
+                <div className="flex gap-4 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  {job.type} • <DollarSign className="h-4 w-4 text-muted-foreground" /> {job.salary}
                 </div>
-
-                {job.requirements.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Requisitos:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {job.requirements.map((requirement) => (
-                        <Badge key={requirement} variant="outline">
-                          {requirement}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))}

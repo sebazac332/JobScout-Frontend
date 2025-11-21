@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +7,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Company } from "@/lib/types"
-import { mockCompanies } from "@/lib/mock-data"
 import { useToast } from "@/hooks/use-toast"
 
 interface CompanyFormProps {
@@ -22,8 +19,12 @@ export function CompanyForm({ company, onSave, onCancel }: CompanyFormProps) {
   const [formData, setFormData] = useState({
     name: company?.name || "",
     description: company?.description || "",
-    website: company?.website || "",
+    city: company?.city || "",
+    cep: company?.cep || "",
+    employees: company?.employees?.toString() || "",
+    years: company?.years?.toString() || "",
   })
+
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
@@ -32,33 +33,18 @@ export function CompanyForm({ company, onSave, onCancel }: CompanyFormProps) {
     setIsLoading(true)
 
     try {
-      // Simular delay de API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const newCompany: Company = {
-        id: company?.id || Date.now().toString(),
+      const savedCompany: Company = {
+        id: company?.id || 0,
         name: formData.name,
         description: formData.description,
-        website: formData.website || undefined,
-        createdAt: company?.createdAt || new Date().toISOString(),
+        city: formData.city,
+        cep: formData.cep,
+        employees: Number(formData.employees),
+        years: Number(formData.years),
+        admin_id: 0,
       }
 
-      if (company) {
-        // Atualizar empresa existente
-        const index = mockCompanies.findIndex((c) => c.id === company.id)
-        if (index !== -1) {
-          mockCompanies[index] = newCompany
-        }
-      } else {
-        // Adicionar nova empresa
-        mockCompanies.push(newCompany)
-      }
-
-      onSave(newCompany)
-      toast({
-        title: company ? "Empresa atualizada!" : "Empresa criada!",
-        description: `${newCompany.name} foi ${company ? "atualizada" : "criada"} com sucesso.`,
-      })
+      onSave(savedCompany)
     } catch (error) {
       toast({
         title: "Erro",
@@ -86,7 +72,6 @@ export function CompanyForm({ company, onSave, onCancel }: CompanyFormProps) {
               id="name"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Ex: TechCorp"
               required
             />
           </div>
@@ -97,20 +82,50 @@ export function CompanyForm({ company, onSave, onCancel }: CompanyFormProps) {
               id="description"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Descreva a empresa e suas atividades..."
               rows={4}
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="website">Website</Label>
+            <Label htmlFor="city">Cidade *</Label>
             <Input
-              id="website"
-              type="url"
-              value={formData.website}
-              onChange={(e) => setFormData({ ...formData, website: e.target.value })}
-              placeholder="https://exemplo.com"
+              id="city"
+              value={formData.city}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cep">CEP *</Label>
+            <Input
+              id="cep"
+              value={formData.cep}
+              onChange={(e) => setFormData({ ...formData, cep: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="employees">Número de Empregados *</Label>
+            <Input
+              id="employees"
+              type="number"
+              value={formData.employees}
+              onChange={(e) => setFormData({ ...formData, employees: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="years">Anos de Funcionamento *</Label>
+            <Input
+              id="years"
+              type="number"
+              value={formData.years}
+              onChange={(e) => setFormData({ ...formData, years: e.target.value })}
+              required
             />
           </div>
 

@@ -47,7 +47,7 @@ export function useAuth(options?: { redirectTo?: string; requireAuth?: boolean }
   useEffect(() => {
     if (!mounted || isLoading) return
     if (options?.requireAuth && !user) {
-      router.replace(options.redirectTo || "/login")
+      router.replace(options.redirectTo || "/auth")
     }
   }, [mounted, isLoading, user])
 
@@ -111,6 +111,7 @@ export function useAuth(options?: { redirectTo?: string; requireAuth?: boolean }
     register,
     logout,
     isAdmin: user?.role === "admin",
+    isRegularUser: user?.role === "user",
     isAuthenticated: !!user,
   }
 }
