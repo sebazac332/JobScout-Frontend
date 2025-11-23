@@ -11,7 +11,7 @@ import type { Job, Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
-import jwtDecode from "jwt-decode"
+import { jwtDecode } from "jwt-decode"
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
@@ -22,7 +22,6 @@ export default function JobsPage() {
   const { user, isLoading, isAdmin } = useAuth()
   const router = useRouter()
 
-  // Auth redirect
   useEffect(() => {
     if (isLoading) return
     if (!user) router.replace("/auth")
@@ -30,65 +29,42 @@ export default function JobsPage() {
   }, [isLoading, user, isAdmin, router])
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem("token")
-        if (!token) return
+  const fetchData = async () => {
+    try {
+      const token = user?.token
+      if (!token) return
 
-        const companiesRes = await fetch("http://localhost:8000/empresas", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const companiesData = await companiesRes.json()
-        const decoded: any = jwtDecode(token)
-        const adminId = decoded?.id
+      const jobsRes = await fetch("http://localhost:8000/vagas/admin", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const jobsData = await jobsRes.json()
 
-        const adminCompanies = companiesData
-          .filter((c: any) => c.admin_id === adminId)
-          .map((c: any) => ({
-            id: c.id,
-            name: c.nome,
-            description: c.descricao,
-            city: c.cidade,
-            cep: c.cep,
-            employees: c.no_empregados,
-            years: c.anos_func,
-            admin_id: c.admin_id,
-          }))
+      const transformedJobs: Job[] = jobsData.map((j: any) => ({
+        id: j.id,
+        title: j.titulo,
+        description: j.descricao,
+        salary: j.salario,
+        type: j.modalidade,
+        positions: j.no_vagas,
+        companyId: j.empresa_id,
+        requirements: j.competencias ? j.competencias.map((c: any) => c.nome) : [],
+      }))
 
-        setCompanies(adminCompanies)
-
-        const jobsRes = await fetch("http://localhost:8000/vagas", {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        const jobsData = await jobsRes.json()
-        const adminJobs = jobsData.filter((j: any) =>
-          adminCompanies.some((c) => c.id === j.empresa_id)
-        )
-
-        const transformedJobs: Job[] = adminJobs.map((j: any) => ({
-          id: j.id,
-          title: j.titulo,
-          description: j.descricao,
-          salary: j.salario,
-          type: j.tipo,
-          positions: j.vagas_disponiveis,
-          companyId: j.empresa_id,
-        }))
-
-        setJobs(transformedJobs)
-      } catch (err) {
-        console.error("Erro ao buscar dados:", err)
-        toast({ title: "Erro", description: "Não foi possível carregar os dados", variant: "destructive" })
-      }
+      setJobs(transformedJobs)
+    } catch (err) {
+      console.error("Erro ao buscar dados:", err)
+      toast({ title: "Erro", description: "Não foi possível carregar os dados", variant: "destructive" })
     }
+  }
 
-    fetchData()
-  }, [user])
+  fetchData()
+  }, [user, isLoading, isAdmin, toast])
+
 
   const handleSave = async (job: Job) => {
     try {
-      const token = localStorage.getItem("token")
-      if (!token) throw new Error("Token não encontrado")
+      const token = user?.token
+      if (!token) throw new Error("No token available")
 
       const method = editingJob ? "PUT" : "POST"
       const url = editingJob
@@ -102,9 +78,10 @@ export default function JobsPage() {
           titulo: job.title,
           descricao: job.description,
           salario: job.salary,
-          tipo: job.type,
-          vagas_disponiveis: job.positions,
+          modalidade: job.type,
+          no_vagas: job.positions,
           empresa_id: job.companyId,
+          competencias: job.requirements.map((r) => ({ nome: r })),
         }),
       })
 
@@ -116,9 +93,10 @@ export default function JobsPage() {
         title: savedJob.titulo,
         description: savedJob.descricao,
         salary: savedJob.salario,
-        type: savedJob.tipo,
-        positions: savedJob.vagas_disponiveis,
+        type: savedJob.modalidade,
+        positions: savedJob.no_vagas,
         companyId: savedJob.empresa_id,
+        requirements: savedJob.competencias ? savedJob.competencias.map((c: any) => c.nome) : [],
       }
 
       setJobs((prev) =>
@@ -141,7 +119,8 @@ export default function JobsPage() {
   const handleDelete = async (job: Job) => {
     if (!confirm(`Tem certeza que deseja excluir a vaga "${job.title}"?`)) return
     try {
-      const token = localStorage.getItem("token")
+      const token = user?.token
+      if (!token) throw new Error("No token available")
       const res = await fetch(`http://localhost:8000/vagas/${job.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
@@ -217,10 +196,21 @@ export default function JobsPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">{job.description}</p>
-                <div className="flex gap-4 text-sm">
+
+                <div className="flex gap-4 text-sm mb-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   {job.type} • <DollarSign className="h-4 w-4 text-muted-foreground" /> {job.salary}
                 </div>
+
+                {job.requirements && job.requirements.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {job.requirements.map((req, idx) => (
+                      <Badge key={idx} variant="secondary">
+                        {req}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

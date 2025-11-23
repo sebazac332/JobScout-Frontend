@@ -12,7 +12,7 @@ import type { Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
 import { useRouter } from "next/navigation"
-import jwtDecode from "jwt-decode"
+import { jwtDecode } from "jwt-decode"
 
 export default function CompaniesPage() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -37,9 +37,13 @@ export default function CompaniesPage() {
   }, [isLoading, user, isAdmin, router])
 
   useEffect(() => {
+  
+  if (isLoading) return
+  if (!user?.token) return
+
   const fetchCompanies = async () => {
     try {
-      const token = localStorage.getItem("token")
+      const token = user?.token
       if (!token) return
 
       const res = await fetch("http://localhost:8000/empresas", {
@@ -71,11 +75,11 @@ export default function CompaniesPage() {
   }
 
   fetchCompanies()
-}, [])
+}, [user, isLoading])
 
   const handleSave = async (company: Company) => {
     try {
-      const token = localStorage.getItem("token")
+      const token = user?.token
       if (!token) throw new Error("Token não encontrado")
 
       interface DecodedToken {
@@ -149,7 +153,8 @@ export default function CompaniesPage() {
     if (!confirm(`Tem certeza que deseja excluir a empresa "${company.name}"?`)) return
 
     try {
-      const token = localStorage.getItem("token")
+      const token = user?.token
+      if (!token) throw new Error("Token não encontrado")
       const res = await fetch(`http://localhost:8000/empresas/${company.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },

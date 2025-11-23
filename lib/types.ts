@@ -30,6 +30,7 @@ export interface Job {
   type: "presencial" | "hibrido" | "remoto" | "estagio"
   positions: number
   companyId: number
+  requirements: string[]
 }
 
 export interface CV {

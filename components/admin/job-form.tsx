@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { X } from "lucide-react"
 import type { Job, Company } from "@/lib/types"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/hooks/useAuth"
 
 interface JobFormProps {
   job?: Job
@@ -18,6 +20,10 @@ interface JobFormProps {
 }
 
 export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
+  const { user } = useAuth()
+  const token = user?.token
+  const { toast } = useToast()
+
   const [formData, setFormData] = useState({
     title: job?.title || "",
     description: job?.description || "",
@@ -27,24 +33,60 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
     companyId: job?.companyId || companies[0]?.id || 0,
   })
 
-  // NEW: requirements state
   const [requirements, setRequirements] = useState<string[]>(job?.requirements || [])
   const [newRequirement, setNewRequirement] = useState("")
 
-  const addRequirement = () => {
+  const addRequirement = async () => {
     const trimmed = newRequirement.trim()
-    if (trimmed && !requirements.includes(trimmed)) {
-      setRequirements([...requirements, trimmed])
-      setNewRequirement("")
+    if (!trimmed || requirements.includes(trimmed)) return
+
+    if (job?.id && token) {
+      try {
+        const res = await fetch(`http://localhost:8000/vagas/${job.id}/competencias`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ nome: trimmed }),
+        })
+        if (!res.ok) throw new Error("Erro ao adicionar competência")
+      } catch (err) {
+        console.error(err)
+        toast({ title: "Erro", description: "Não foi possível adicionar requisito", variant: "destructive" })
+        return
+      }
     }
+
+    setRequirements([...requirements, trimmed])
+    setNewRequirement("")
   }
 
-  const removeRequirement = (req: string) => {
+  const removeRequirement = async (req: string) => {
+    if (job?.id && token) {
+      try {
+        const res = await fetch(`http://localhost:8000/vagas/${job.id}/competencias/${req}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        if (!res.ok) throw new Error("Erro ao remover competência")
+      } catch (err) {
+        console.error(err)
+        toast({ title: "Erro", description: "Não foi possível remover requisito", variant: "destructive" })
+        return
+      }
+    }
+
     setRequirements(requirements.filter((r) => r !== req))
   }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (requirements.length === 0) {
+      toast({ title: "Erro", description: "Adicione pelo menos um requisito", variant: "destructive" })
+      return
+    }
 
     onSave({
       id: job?.id || Date.now(),
@@ -156,31 +198,28 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
           {/* REQUIREMENTS */}
           <div className="space-y-2">
             <Label>Requisitos *</Label>
-
-            {/* Add requirement input */}
             <div className="flex gap-2">
               <Input
                 placeholder="Adicionar requisito"
                 value={newRequirement}
                 onChange={(e) => setNewRequirement(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault()
+                    addRequirement()
+                  }
+                }}
               />
-              <Button type="button" onClick={addRequirement}>
+              <Button type="button" onClick={addRequirement} disabled={!newRequirement.trim()}>
                 Add
               </Button>
             </div>
 
-            {/* List of requirements */}
             <div className="flex flex-wrap gap-2 pt-2">
               {requirements.map((req) => (
-                <div
-                  key={req}
-                  className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full text-sm"
-                >
+                <div key={req} className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full text-sm">
                   {req}
-                  <X
-                    className="h-4 w-4 cursor-pointer"
-                    onClick={() => removeRequirement(req)}
-                  />
+                  <X className="h-4 w-4 cursor-pointer" onClick={() => removeRequirement(req)} />
                 </div>
               ))}
             </div>

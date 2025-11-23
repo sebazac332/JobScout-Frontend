@@ -35,16 +35,17 @@ export default function AdminDashboard() {
 
     const fetchData = async () => {
       try {
-        const token = localStorage.getItem("token")
+        const token = user?.token
+        if (!token) throw new Error("No token available")
 
         const [companiesRes, jobsRes, applicationsRes] = await Promise.all([
-          fetch("http://localhost:8000/empresas", {
+          fetch("http://localhost:8000/empresas/admin", {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          fetch("http://localhost:8000/vagas", {
+          fetch("http://localhost:8000/vagas/admin", {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          fetch("http://localhost:8000/vagas/with-applications", {
+          fetch("http://localhost:8000/vagas/admin-with-applications", {
             headers: { Authorization: `Bearer ${token}` }
           }),
         ])
@@ -72,14 +73,13 @@ export default function AdminDashboard() {
         salary: j.salario,
         numberOfPositions: j.no_vagas,
         companyId: j.empresa_id,
-        users: j.users || [],
       }))
 
       const applicationsFlattened = applicationsData.flatMap(vaga => (vaga.users || []).map(user => ({
         vagaId: vaga.id,
         vagaTitle: vaga.titulo,
         userId: user.id,
-        userName: user.name,
+        userName: user.nome,
       })))
 
         setCompanies(companiesTransformed)
