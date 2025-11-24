@@ -5,6 +5,7 @@ import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Users, Building2 } from "lucide-react"
+import { getStoredUser } from "@/lib/auth"
 
 export default function AdminApplicationsPage() {
   const [data, setData] = useState<any[]>([])
@@ -15,8 +16,16 @@ export default function AdminApplicationsPage() {
   }, [])
 
   const fetchApplications = async () => {
+    const user = getStoredUser()
+    const token = user?.token
+    if (!token) throw new Error("No token available")
+
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/vagas/with-applications`)
+      const res = await fetch("http://localhost:8000/vagas/admin-with-applications", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
       const json = await res.json()
       setData(json)
     } catch (e) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,16 +25,35 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
-    title: job?.title || "",
-    description: job?.description || "",
-    salary: job?.salary || 0,
-    type: job?.type || "presencial",
-    positions: job?.positions || 1,
-    companyId: job?.companyId || companies[0]?.id || 0,
+    title: "",
+    description: "",
+    salary: 0,
+    type: "presencial",
+    positions: 1,
+    companyId: 0,
   })
 
-  const [requirements, setRequirements] = useState<string[]>(job?.requirements || [])
+  const [requirements, setRequirements] = useState<string[]>([])
   const [newRequirement, setNewRequirement] = useState("")
+
+  useEffect(() => {
+    if (job) {
+      setFormData({
+        title: job.title,
+        description: job.description,
+        salary: job.salary,
+        type: job.type,
+        positions: job.positions,
+        companyId: job.companyId,
+      })
+      setRequirements(job.requirements || [])
+    } else if (companies.length > 0) {
+      setFormData((prev) => ({
+        ...prev,
+        companyId: companies[0].id,
+      }))
+    }
+  }, [job, companies])
 
   const addRequirement = async () => {
     const trimmed = newRequirement.trim()
@@ -82,11 +101,15 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
-    if (requirements.length === 0) {
+
+    if (!job && requirements.length === 0) {
       toast({ title: "Erro", description: "Adicione pelo menos um requisito", variant: "destructive" })
       return
     }
+
+    const cleanRequirements = requirements
+      .map(r => r.trim())
+      .filter(r => r !== "")
 
     onSave({
       id: job?.id || Date.now(),
@@ -94,7 +117,7 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
       salary: Number(formData.salary),
       positions: Number(formData.positions),
       companyId: Number(formData.companyId),
-      requirements,
+      requirements: cleanRequirements,
     })
   }
 

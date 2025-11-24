@@ -46,16 +46,13 @@ export default function CompaniesPage() {
       const token = user?.token
       if (!token) return
 
-      const res = await fetch("http://localhost:8000/empresas", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      const res = await fetch("http://localhost:8000/empresas/admin", {
+      headers: { Authorization: `Bearer ${token}` },
+      });
+
       const data = await res.json()
 
-      const decoded: any = jwtDecode(token)
-      const adminId = decoded?.id
-
       const transformed = data
-        .filter((c: any) => c.admin_id === adminId)
         .map((c: any) => ({
           id: c.id,
           name: c.nome,
@@ -67,31 +64,56 @@ export default function CompaniesPage() {
           admin_id: c.admin_id
         }))
 
+        setCompanies(transformed)
+      } catch (err) {
+        console.error("Erro ao buscar empresas:", err)
+        toast({ title: "Erro", description: "Não foi possível carregar as empresas", variant: "destructive" })
+      }
+    }
+
+    fetchCompanies()
+  }, [user, isLoading])
+
+  const refreshCompanies = async () => {
+    try {
+      const token = user?.token
+      if (!token) return
+
+      const res = await fetch("http://localhost:8000/empresas/admin", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      const data = await res.json()
+
+      const transformed = data.map((c: any) => ({
+        id: c.id,
+        name: c.nome,
+        description: c.descricao,
+        city: c.cidade,
+        cep: c.cep,
+        employees: c.no_empregados,
+        years: c.anos_func,
+        admin_id: c.admin_id,
+      }))
+
       setCompanies(transformed)
     } catch (err) {
       console.error("Erro ao buscar empresas:", err)
-      toast({ title: "Erro", description: "Não foi possível carregar as empresas", variant: "destructive" })
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar as empresas",
+        variant: "destructive",
+      })
     }
   }
-
-  fetchCompanies()
-}, [user, isLoading])
 
   const handleSave = async (company: Company) => {
     try {
       const token = user?.token
       if (!token) throw new Error("Token não encontrado")
 
-      interface DecodedToken {
-        id: number
-        sub: string
-        role: string
-      }
-
-      const decoded: any = jwtDecode<DecodedToken>(token)
+      const decoded: any = jwtDecode(token)
       const adminId = decoded.id
-
-      const companyToSave = { ...company, admin_id: adminId }
 
       const method = editingCompany ? "PUT" : "POST"
       const url = editingCompany
@@ -105,38 +127,22 @@ export default function CompaniesPage() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          nome: companyToSave.name,
-          descricao: companyToSave.description,
-          cidade: companyToSave.city,
-          cep: companyToSave.cep,
-          no_empregados: companyToSave.employees,
-          anos_func: companyToSave.years,
-          admin_id: companyToSave.admin_id,
+          nome: company.name,
+          descricao: company.description,
+          cidade: company.city,
+          cep: company.cep,
+          no_empregados: company.employees,
+          anos_func: company.years,
+          admin_id: adminId,
         }),
       })
 
-      if (!res.ok) throw new Error("Erro ao salvar empresa")
+    if (!res.ok) throw new Error("Erro ao salvar empresa")
 
-      const savedCompany = await res.json()
-      const transformed = {
-        id: savedCompany.id,
-        name: savedCompany.nome,
-        description: savedCompany.descricao,
-        city: savedCompany.cidade,
-        cep: savedCompany.cep,
-        employees: savedCompany.no_empregados,
-        years: savedCompany.anos_func,
-        admin_id: savedCompany.admin_id,
-      }
+    await refreshCompanies()
 
-      setCompanies(prev =>
-        editingCompany
-          ? prev.map(c => (c.id === transformed.id ? transformed : c))
-          : [...prev, transformed]
-      )
-
-      setShowForm(false)
-      setEditingCompany(undefined)
+    setShowForm(false)
+    setEditingCompany(undefined)
       toast({ title: "Sucesso", description: "Empresa salva com sucesso" })
     } catch (err) {
       console.error(err)
@@ -162,7 +168,7 @@ export default function CompaniesPage() {
 
       if (!res.ok) throw new Error("Erro ao excluir empresa")
 
-      setCompanies(prev => prev.filter(c => c.id !== company.id))
+      await refreshCompanies()
       toast({ title: "Empresa excluída", description: `${company.name} foi removida do sistema.` })
     } catch (err) {
       console.error(err)
