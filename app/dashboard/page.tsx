@@ -1,58 +1,43 @@
 "use client"
+
 import { UserLayout } from "@/components/user/user-layout"
 import { JobSearch } from "@/components/user/job-search"
 import type { Job } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
-import { mockApplications, mockCVs } from "@/lib/mock-data"
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const { toast } = useToast()
 
-  const handleApply = (job: Job) => {
+  const handleApply = async (job: Job) => {
     if (!user) return
 
-    // Verificar se o usuário já se candidatou
-    const existingApplication = mockApplications.find((app) => app.userId === user.id && app.jobId === job.id)
+    try {
+      const res = await fetch(`http://localhost:8000/vagas/${job.id}/apply/${user.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
 
-    if (existingApplication) {
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || "Erro ao aplicar")
+      }
+
       toast({
-        title: "Candidatura já enviada",
-        description: "Você já se candidatou a esta vaga.",
+        title: "Candidatura enviada!",
+        description: `Você se candidatou para ${job.title}`,
+      })
+    } catch (err: any) {
+      toast({
+        title: "Erro",
+        description: err.message,
         variant: "destructive",
       })
-      return
     }
-
-    // Verificar se o usuário tem CV cadastrado
-    const userCV = mockCVs.find((cv) => cv.userId === user.id)
-    if (!userCV) {
-      toast({
-        title: "CV necessário",
-        description: "Você precisa cadastrar seu CV antes de se candidatar às vagas.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Simular candidatura
-    const newApplication = {
-      id: Date.now().toString(),
-      userId: user.id,
-      jobId: job.id,
-      cvId: userCV.id,
-      status: "pending" as const,
-      appliedAt: new Date().toISOString(),
-    }
-
-    mockApplications.push(newApplication)
-
-    toast({
-      title: "Candidatura enviada!",
-      description: `Sua candidatura para ${job.title} foi enviada com sucesso.`,
-    })
   }
+
+  if (!user) return <p>Carregando...</p>
 
   return (
     <UserLayout>
@@ -62,7 +47,7 @@ export default function DashboardPage() {
           <p className="text-muted-foreground">Encontre oportunidades que combinam com seu perfil</p>
         </div>
 
-        <JobSearch onApply={handleApply} />
+        <JobSearch userId={user.id} onApply={handleApply} />
       </div>
     </UserLayout>
   )

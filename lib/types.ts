@@ -33,19 +33,6 @@ export interface Job {
   requirements: string[]
 }
 
-export interface CV {
-  id: string
-  userId: string
-  name: string
-  email: string
-  phone: string
-  summary: string
-  experience: Experience[]
-  education: Education[]
-  skills: string[]
-  updatedAt: string
-}
-
 export interface Experience {
   id: string
   company: string
@@ -53,13 +40,9 @@ export interface Experience {
   years: number
 }
 
-export interface Education {
-  id: string
-  institution: string
-  degree: string
-  field: string
-  startDate: string
-  endDate?: string
+export interface Skill {
+  id: number
+  name: string
 }
 
 export interface Application {

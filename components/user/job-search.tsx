@@ -1,42 +1,61 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, MapPin, DollarSign, Briefcase, Building2 } from "lucide-react"
-import { mockJobs, mockCompanies } from "@/lib/mock-data"
+import { Search, DollarSign, Briefcase, Building2 } from "lucide-react"
 import type { Job } from "@/lib/types"
 
 interface JobSearchProps {
+  userId: number
   onApply: (job: Job) => void
 }
 
-export function JobSearch({ onApply }: JobSearchProps) {
+export function JobSearch({ userId, onApply }: JobSearchProps) {
   const [searchTerm, setSearchTerm] = useState("")
-  const [locationFilter, setLocationFilter] = useState("all")
   const [typeFilter, setTypeFilter] = useState("all")
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [companies, setCompanies] = useState<any[]>([])
+  const [userCompetencias, setUserCompetencias] = useState<string[]>([])
 
-  const getCompanyName = (companyId: string) => {
-    return mockCompanies.find((c) => c.id === companyId)?.name || "Empresa não encontrada"
+  const fetchJobs = async () => {
+    const resJobs = await fetch("http://localhost:8000/vagas")
+    const resCompanies = await fetch("http://localhost:8000/empresas")
+    const resCompetencias = await fetch(`http://localhost:8000/users/${userId}/competencias`)
+
+    const jobsData = await resJobs.json()
+    const companiesData = await resCompanies.json()
+    const competenciasData = await resCompetencias.json()
+
+    setUserCompetencias(competenciasData.map((c: any) => c.nome))
+
+    const transformedJobs = jobsData.map((vaga: any) => ({
+      id: vaga.id,
+      title: vaga.titulo,
+      description: vaga.descricao,
+      salary: vaga.salario,
+      type: vaga.modalidade,
+      companyId: Number(vaga.empresa_id),
+      requirements: vaga.competencias?.map((c: any) => c.nome) || [],
+    }))
+
+    setJobs(transformedJobs)
+    setCompanies(companiesData)
   }
 
-  const getJobTypeLabel = (type: string) => {
-    const labels = {
-      "full-time": "Tempo Integral",
-      "part-time": "Meio Período",
-      contract: "Contrato",
-      remote: "Remoto",
-    }
-    return labels[type as keyof typeof labels] || type
+  useEffect(() => {
+    fetchJobs()
+  }, [])
+
+  const getCompanyName = (companyId: number) => {
+    return companies.find((c) => c.id === companyId)?.nome || "Empresa não encontrada"
   }
 
   const filteredJobs = useMemo(() => {
-    return mockJobs.filter((job) => {
-      if (!job.isActive) return false
-
+    return jobs.filter((job) => {
       const matchesSearch =
         !searchTerm ||
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -44,21 +63,17 @@ export function JobSearch({ onApply }: JobSearchProps) {
         job.requirements.some((req) => req.toLowerCase().includes(searchTerm.toLowerCase())) ||
         getCompanyName(job.companyId).toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesLocation =
-        locationFilter === "all" || job.location.toLowerCase().includes(locationFilter.toLowerCase())
-
       const matchesType = typeFilter === "all" || job.type === typeFilter
 
-      return matchesSearch && matchesLocation && matchesType
+      return matchesSearch && matchesType
     })
-  }, [searchTerm, locationFilter, typeFilter])
+  }, [searchTerm, typeFilter, jobs, companies])
 
-  const uniqueLocations = Array.from(new Set(mockJobs.map((job) => job.location)))
   const jobTypes = [
-    { value: "full-time", label: "Tempo Integral" },
-    { value: "part-time", label: "Meio Período" },
-    { value: "contract", label: "Contrato" },
-    { value: "remote", label: "Remoto" },
+    { value: "presencial", label: "Presencial" },
+    { value: "hibrido", label: "Híbrido" },
+    { value: "remoto", label: "Remoto" },
+    { value: "estagio", label: "Estágio" },
   ]
 
   return (
@@ -82,19 +97,6 @@ export function JobSearch({ onApply }: JobSearchProps) {
                 className="w-full"
               />
             </div>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="Localização" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as localizações</SelectItem>
-                {uniqueLocations.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Tipo" />
@@ -112,23 +114,13 @@ export function JobSearch({ onApply }: JobSearchProps) {
         </CardContent>
       </Card>
 
-      {/* Results */}
+      {/* Job Results */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">
-            {filteredJobs.length} vaga{filteredJobs.length !== 1 ? "s" : ""} encontrada
-            {filteredJobs.length !== 1 ? "s" : ""}
-          </h2>
-        </div>
-
         {filteredJobs.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">
               <Search className="h-16 w-16 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">Nenhuma vaga encontrada</h3>
-              <p className="text-muted-foreground text-center">
-                Tente ajustar os filtros de busca para encontrar mais oportunidades
-              </p>
             </CardContent>
           </Card>
         ) : (
@@ -149,15 +141,10 @@ export function JobSearch({ onApply }: JobSearchProps) {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground mb-4 line-clamp-3">{job.description}</p>
-
                   <div className="flex flex-wrap gap-4 mb-4 text-sm">
                     <div className="flex items-center gap-1">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      {job.location}
-                    </div>
-                    <div className="flex items-center gap-1">
                       <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      {getJobTypeLabel(job.type)}
+                      {job.type}
                     </div>
                     {job.salary && (
                       <div className="flex items-center gap-1">
@@ -166,20 +153,13 @@ export function JobSearch({ onApply }: JobSearchProps) {
                       </div>
                     )}
                   </div>
-
                   {job.requirements.length > 0 && (
-                    <div>
-                      <p className="text-sm font-medium mb-2">Requisitos:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {job.requirements.slice(0, 6).map((requirement) => (
-                          <Badge key={requirement} variant="secondary">
-                            {requirement}
-                          </Badge>
-                        ))}
-                        {job.requirements.length > 6 && (
-                          <Badge variant="outline">+{job.requirements.length - 6} mais</Badge>
-                        )}
-                      </div>
+                    <div className="flex flex-wrap gap-2">
+                      {job.requirements.slice(0, 6).map((req) => (
+                        <Badge key={req} variant={userCompetencias.includes(req) ? "default" : "secondary"}>
+                          {req}
+                        </Badge>
+                      ))}
                     </div>
                   )}
                 </CardContent>
