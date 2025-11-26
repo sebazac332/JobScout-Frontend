@@ -27,6 +27,7 @@ export default function AdminApplicationsPage() {
         }
       })
       const json = await res.json()
+      console.log("DATA RECEIVED:", json)
       setData(json)
     } catch (e) {
       console.error(e)

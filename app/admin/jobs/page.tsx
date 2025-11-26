@@ -105,67 +105,113 @@ export default function JobsPage() {
   }, [user, isLoading, toast])
 
   const handleSave = async (job: Job) => {
-  try {
-    const token = user?.token
-    if (!token) throw new Error("No token available")
+    try {
+      const token = user?.token
+      if (!token) throw new Error("No token available")
 
-    const method = job.id && jobs.some(j => j.id === job.id) ? "PUT" : "POST"
-    const url = method === "PUT" ? `http://localhost:8000/vagas/${job.id}` : "http://localhost:8000/vagas"
+      const method =
+        job.id && jobs.some((j) => j.id === job.id) ? "PUT" : "POST"
 
-    const cleanRequirements =
-      Array.isArray(job.requirements)
-        ? job.requirements.map(r => r.trim()).filter(r => r !== "")
-        : []
+      const url =
+        method === "PUT"
+          ? `http://localhost:8000/vagas/${job.id}`
+          : "http://localhost:8000/vagas"
 
-    console.log("Sending payload to backend:", {
-      titulo: job.title,
-      descricao: job.description,
-      salario: job.salary === "" ? null : job.salary,
-      modalidade: job.type,
-      no_vagas: job.positions === "" ? null : job.positions,
-      empresa_id: job.companyId,
-      competencias: cleanRequirements.map((r) => ({ nome: r })),
-    })
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          titulo: job.title,
+          descricao: job.description,
+          salario: job.salary,
+          modalidade: job.type,
+          no_vagas: job.positions,
+          empresa_id: job.companyId,
+        }),
+      })
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        titulo: job.title,
-        descricao: job.description,
-        salario: job.salary === "" ? null : job.salary,
-        modalidade: job.type,
-        no_vagas: job.positions === "" ? null : job.positions,
-        empresa_id: job.companyId,
-        competencias: cleanRequirements.map((r) => ({ nome: r })),
-      }),
-    })
+      if (!res.ok) throw new Error("Erro ao salvar vaga")
+      const saved = await res.json()
+      const vagaId = saved.id
 
-    if (!res.ok) throw new Error("Erro ao salvar vaga")
-    const saved = await res.json()
+      await fetch(`http://localhost:8000/vagas/${vagaId}/competencias`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      })
 
-    const transformed: Job = {
-      id: saved.id,
-      title: saved.titulo,
-      description: saved.descricao,
-      salary: saved.salario,
-      type: saved.modalidade,
-      positions: saved.no_vagas,
-      companyId: saved.empresa_id,
-      requirements: saved.competencias ? saved.competencias.map((c: any) => c.nome) : [],
+      const allCompetenciasRes = await fetch(
+        "http://localhost:8000/competencias/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+      const allCompetencias = await allCompetenciasRes.json()
+
+      for (const req of job.requirements) {
+        const name = req.trim()
+
+        let competencia = allCompetencias.find((c: any) => c.nome === name)
+
+        if (!competencia) {
+          const compRes = await fetch(
+            "http://localhost:8000/competencias/",
+            {
+              method: "POST",
+              headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ nome: name }),
+            }
+          )
+          competencia = await compRes.json()
+        }
+
+        await fetch(
+          `http://localhost:8000/vagas/${vagaId}/competencias/${competencia.id}`,
+          {
+           method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
+      }
+
+      const transformed: Job = {
+        id: saved.id,
+        title: saved.titulo,
+        description: saved.descricao,
+        salary: saved.salario,
+        type: saved.modalidade,
+        positions: saved.no_vagas,
+        companyId: saved.empresa_id,
+        requirements: job.requirements,
+      }
+
+      setJobs((prev) =>
+        method === "PUT"
+          ? prev.map((j) =>
+              j.id === transformed.id ? transformed : j
+            )
+          : [...prev, transformed]
+      )
+
+      setShowForm(false)
+      setEditingJob(undefined)
+      toast({ title: "Sucesso", description: "Vaga salva com sucesso" })
+    } catch (err) {
+      console.error(err)
+      toast({
+        title: "Erro",
+        description: "Não foi possível salvar a vaga",
+        variant: "destructive",
+      })
     }
+  }
 
-    setJobs((prev) =>
-      method === "PUT" ? prev.map((j) => (j.id === transformed.id ? transformed : j)) : [...prev, transformed]
-    )
-    setShowForm(false)
-    setEditingJob(undefined)
-    toast({ title: "Sucesso", description: "Vaga salva com sucesso" })
-  } catch (err) {
-    console.error(err)
-    toast({ title: "Erro", description: "Não foi possível salvar a vaga", variant: "destructive" })
-  }
-  }
+
 
   const handleEdit = (job: Job) => {
     setEditingJob(job)
@@ -255,7 +301,6 @@ export default function JobsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <CardTitle className="text-xl">{job.title}</CardTitle>
-                        <Badge variant="default">Ativa</Badge>
                       </div>
                       <CardDescription className="text-base">{getCompanyName(job.companyId)}</CardDescription>
                     </div>

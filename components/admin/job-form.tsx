@@ -10,7 +10,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { X } from "lucide-react"
 import type { Job, Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/hooks/useAuth"
 
 interface JobFormProps {
   job?: Job
@@ -20,8 +19,6 @@ interface JobFormProps {
 }
 
 export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
-  const { user } = useAuth()
-  const token = user?.token
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -48,54 +45,18 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
       })
       setRequirements(job.requirements || [])
     } else if (companies.length > 0) {
-      setFormData((prev) => ({
-        ...prev,
-        companyId: companies[0].id,
-      }))
+      setFormData((prev) => ({ ...prev, companyId: companies[0].id }))
     }
   }, [job, companies])
 
-  const addRequirement = async () => {
+  const addRequirement = () => {
     const trimmed = newRequirement.trim()
     if (!trimmed || requirements.includes(trimmed)) return
-
-    if (job?.id && token) {
-      try {
-        const res = await fetch(`http://localhost:8000/vagas/${job.id}/competencias`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ nome: trimmed }),
-        })
-        if (!res.ok) throw new Error("Erro ao adicionar competência")
-      } catch (err) {
-        console.error(err)
-        toast({ title: "Erro", description: "Não foi possível adicionar requisito", variant: "destructive" })
-        return
-      }
-    }
-
     setRequirements([...requirements, trimmed])
     setNewRequirement("")
   }
 
-  const removeRequirement = async (req: string) => {
-    if (job?.id && token) {
-      try {
-        const res = await fetch(`http://localhost:8000/vagas/${job.id}/competencias/${req}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (!res.ok) throw new Error("Erro ao remover competência")
-      } catch (err) {
-        console.error(err)
-        toast({ title: "Erro", description: "Não foi possível remover requisito", variant: "destructive" })
-        return
-      }
-    }
-
+  const removeRequirement = (req: string) => {
     setRequirements(requirements.filter((r) => r !== req))
   }
 
@@ -107,9 +68,7 @@ export function JobForm({ job, companies, onSave, onCancel }: JobFormProps) {
       return
     }
 
-    const cleanRequirements = requirements
-      .map(r => r.trim())
-      .filter(r => r !== "")
+    const cleanRequirements = requirements.map((r) => r.trim()).filter((r) => r !== "")
 
     onSave({
       id: job?.id || Date.now(),

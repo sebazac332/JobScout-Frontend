@@ -216,15 +216,20 @@ export default function CompaniesPage() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">{company.name}</CardTitle>
-                      <Badge variant="secondary" className="mt-1">
-                        Ativa
-                      </Badge>
                     </div>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <CardDescription className="mb-4">{company.description}</CardDescription>
+
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <Badge>Cidade: {company.city}</Badge>
+                  <Badge>CEP: {company.cep}</Badge>
+                  <Badge>Empregados: {company.employees}</Badge>
+                  <Badge>Anos: {company.years}</Badge>
+                </div>
+
                 <div className="flex gap-2">
                   <Button size="sm" variant="outline" onClick={() => handleEdit(company)}>
                     <Edit className="h-4 w-4 mr-1" />
