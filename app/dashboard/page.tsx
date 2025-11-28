@@ -14,9 +14,14 @@ export default function DashboardPage() {
     if (!user) return
 
     try {
+      const token = user?.token
+      if (!token) throw new Error("No token available")
+
       const res = await fetch(`http://localhost:8000/vagas/${job.id}/apply/${user.id}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`},
       })
 
       if (!res.ok) {

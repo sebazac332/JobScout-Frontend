@@ -104,12 +104,22 @@ export function useAuth(options?: { redirectTo?: string; requireAuth?: boolean }
     router.replace("/auth")
   }
 
+  const updateUser = (newData: Partial<User>) => {
+    if (!user) return
+
+    const updated = { ...user, ...newData }
+    setUser(updated)
+    localStorage.setItem("user", JSON.stringify(updated))
+    emitAuthChange()
+  }
+
   return {
     user,
     isLoading: !mounted || isLoading,
     login,
     register,
     logout,
+    updateUser,
     isAdmin: user?.role === "admin",
     isRegularUser: user?.role === "user",
     isAuthenticated: !!user,

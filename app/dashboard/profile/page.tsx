@@ -6,35 +6,48 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, Mail, Shield, Phone, Briefcase, BookOpen } from "lucide-react"
+import { User, Mail, Shield, Briefcase, BookOpen } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 import { useToast } from "@/hooks/use-toast"
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth()
+  const { user, logout, updateUser } = useAuth()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    phone: "",
     workArea: "",
     educationLevel: "",
+    phone: "",
+    cpf: "",
   })
 
   useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.nome,
-        email: user.email,
-        phone: user.telefone || "",
-        workArea: user.area_trabalho || "",
-        educationLevel: user.nivel_educacao || "",
-      })
-    }
+    if (!user) return
+    setFormData({
+      name: user.name ?? user.nome ?? "",
+      email: user.email ?? "",
+      workArea: user.workArea ?? user.area_trabalho ?? "",
+      educationLevel: user.educationLevel ?? user.nivel_educacao ?? "",
+      phone: user.phone ?? user.telefone ?? "",
+      cpf: user.cpf ?? "",
+    })
   }, [user])
 
   if (!user) return null
+
+  // 🔥 Normalized user for viewing section
+  const normalizedUser = {
+    name: user.name ?? user.nome ?? "",
+    email: user.email ?? "",
+    workArea: user.workArea ?? user.area_trabalho ?? "",
+    educationLevel: user.educationLevel ?? user.nivel_educacao ?? "",
+    phone: user.phone ?? user.telefone ?? "",
+    cpf: user.cpf ?? "",
+    role: user.role,
+    id: user.id,
+  }
 
   const handleSave = async () => {
     try {
@@ -47,9 +60,10 @@ export default function ProfilePage() {
         body: JSON.stringify({
           nome: formData.name,
           email: formData.email,
-          telefone: formData.phone,
           area_trabalho: formData.workArea,
           nivel_educacao: formData.educationLevel,
+          telefone: formData.phone,
+          cpf: formData.cpf,
         }),
       })
 
@@ -58,11 +72,33 @@ export default function ProfilePage() {
         throw new Error(error.detail || "Erro ao atualizar perfil")
       }
 
-      const updatedUser = await res.json()
+      const updatedAPIUser = await res.json()
+
+      const updatedUser = {
+        ...user,
+        name: updatedAPIUser.name ?? updatedAPIUser.nome,
+        email: updatedAPIUser.email,
+        workArea: updatedAPIUser.workArea ?? updatedAPIUser.area_trabalho,
+        educationLevel: updatedAPIUser.educationLevel ?? updatedAPIUser.nivel_educacao,
+        phone: updatedAPIUser.phone ?? updatedAPIUser.telefone,
+        cpf: updatedAPIUser.cpf,
+      }
+
+      updateUser(updatedUser)
+      setFormData({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        workArea: updatedUser.workArea,
+        educationLevel: updatedUser.educationLevel,
+        phone: updatedUser.phone,
+        cpf: updatedUser.cpf,
+      })
+
       toast({
         title: "Perfil atualizado",
         description: "Suas informações foram salvas com sucesso.",
       })
+
       setIsEditing(false)
     } catch (err: any) {
       toast({
@@ -82,7 +118,6 @@ export default function ProfilePage() {
         </div>
 
         <div className="max-w-2xl space-y-6">
-          {/* Informações Pessoais */}
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -98,9 +133,11 @@ export default function ProfilePage() {
                 </Button>
               </div>
             </CardHeader>
+
             <CardContent>
               {isEditing ? (
                 <div className="space-y-4">
+                  {/* Nome */}
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
                     <Input
@@ -109,6 +146,8 @@ export default function ProfilePage() {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
+
+                  {/* Email */}
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -118,14 +157,8 @@ export default function ProfilePage() {
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    />
-                  </div>
+
+                  {/* Área de Trabalho */}
                   <div className="space-y-2">
                     <Label htmlFor="workArea">Área de Trabalho</Label>
                     <Input
@@ -134,14 +167,39 @@ export default function ProfilePage() {
                       onChange={(e) => setFormData({ ...formData, workArea: e.target.value })}
                     />
                   </div>
+
+                  {/* Nível de Educação */}
                   <div className="space-y-2">
                     <Label htmlFor="educationLevel">Nível de Educação</Label>
                     <Input
                       id="educationLevel"
                       value={formData.educationLevel}
-                      onChange={(e) => setFormData({ ...formData, educationLevel: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, educationLevel: e.target.value })
+                      }
                     />
                   </div>
+
+                  {/* Telefone */}
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    />
+                  </div>
+
+                  {/* CPF */}
+                  <div className="space-y-2">
+                    <Label htmlFor="cpf">CPF</Label>
+                    <Input
+                      id="cpf"
+                      value={formData.cpf}
+                      onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    />
+                  </div>
+
                   <div className="flex gap-2">
                     <Button onClick={handleSave}>Salvar</Button>
                     <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -154,42 +212,57 @@ export default function ProfilePage() {
                   <div className="flex items-center gap-3">
                     <User className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{user.nome}</p>
+                      <p className="font-medium">{normalizedUser.name || "-"}</p>
                       <p className="text-sm text-muted-foreground">Nome completo</p>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3">
                     <Mail className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{user.email}</p>
+                      <p className="font-medium">{normalizedUser.email || "-"}</p>
                       <p className="text-sm text-muted-foreground">Endereço de email</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{user.telefone || "-"}</p>
-                      <p className="text-sm text-muted-foreground">Telefone</p>
-                    </div>
-                  </div>
+
                   <div className="flex items-center gap-3">
                     <Briefcase className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{user.area_trabalho || "-"}</p>
+                      <p className="font-medium">{normalizedUser.workArea || "-"}</p>
                       <p className="text-sm text-muted-foreground">Área de trabalho</p>
                     </div>
                   </div>
+
                   <div className="flex items-center gap-3">
                     <BookOpen className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{user.nivel_educacao || "-"}</p>
+                      <p className="font-medium">{normalizedUser.educationLevel || "-"}</p>
                       <p className="text-sm text-muted-foreground">Nível de educação</p>
                     </div>
                   </div>
+
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{normalizedUser.phone || "-"}</p>
+                      <p className="text-sm text-muted-foreground">Telefone</p>
+                    </div>
+                  </div>
+
                   <div className="flex items-center gap-3">
                     <Shield className="h-5 w-5 text-muted-foreground" />
                     <div>
-                      <p className="font-medium capitalize">{user.role === "user" ? "Usuário" : "Administrador"}</p>
+                      <p className="font-medium">{normalizedUser.cpf || "-"}</p>
+                      <p className="text-sm text-muted-foreground">CPF</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Shield className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium capitalize">
+                        {normalizedUser.role === "user" ? "Usuário" : "Administrador"}
+                      </p>
                       <p className="text-sm text-muted-foreground">Tipo de conta</p>
                     </div>
                   </div>
@@ -198,7 +271,6 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Configurações de Conta */}
           <Card>
             <CardHeader>
               <CardTitle>Sair de Conta</CardTitle>

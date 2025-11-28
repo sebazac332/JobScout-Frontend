@@ -20,15 +20,22 @@ export function JobSearch({ userId, onApply }: JobSearchProps) {
   const [jobs, setJobs] = useState<Job[]>([])
   const [companies, setCompanies] = useState<any[]>([])
   const [userCompetencias, setUserCompetencias] = useState<string[]>([])
+  const [appliedJobs, setAppliedJobs] = useState<number[]>([])
 
   const fetchJobs = async () => {
     const resJobs = await fetch("http://localhost:8000/vagas")
     const resCompanies = await fetch("http://localhost:8000/empresas")
     const resCompetencias = await fetch(`http://localhost:8000/users/${userId}/competencias`)
+    const resApplications = await fetch(`http://localhost:8000/users/${userId}/applications`)
 
     const jobsData = await resJobs.json()
     const companiesData = await resCompanies.json()
     const competenciasData = await resCompetencias.json()
+    const applicationsData = await resApplications.json()
+
+    setAppliedJobs(
+      applicationsData.map((a: any) => a.vaga?.id).filter((id: number | undefined): id is number => !!id)
+    )
 
     setUserCompetencias(competenciasData.map((c: any) => c.nome))
 
@@ -45,6 +52,7 @@ export function JobSearch({ userId, onApply }: JobSearchProps) {
     setJobs(transformedJobs)
     setCompanies(companiesData)
   }
+
 
   useEffect(() => {
     fetchJobs()
@@ -136,7 +144,15 @@ export function JobSearch({ userId, onApply }: JobSearchProps) {
                         <span className="font-medium">{getCompanyName(job.companyId)}</span>
                       </div>
                     </div>
-                    <Button onClick={() => onApply(job)}>Candidatar-se</Button>
+                    {appliedJobs.includes(job.id) ? (
+                      <Button disabled className="bg-green-600 hover:bg-green-600">
+                        Candidatado ✓
+                      </Button>
+                    ) : (
+                      <Button onClick={() => onApply(job)}>
+                        Candidatar-se
+                      </Button>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent>

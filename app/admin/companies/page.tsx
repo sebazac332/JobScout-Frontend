@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Plus, Edit, Trash2, ExternalLink } from "lucide-react"
-import { mockCompanies } from "@/lib/mock-data"
 import type { Company } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/useAuth"
@@ -31,7 +30,7 @@ export default function CompaniesPage() {
     }
 
     if (!isAdmin) {
-      router.replace("/unauthorized")
+      router.replace("/auth")
       return
     }
   }, [isLoading, user, isAdmin, router])

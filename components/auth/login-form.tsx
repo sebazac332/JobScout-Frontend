@@ -77,12 +77,6 @@ export function LoginForm({ onToggleMode }: LoginFormProps) {
             Não tem conta? Cadastre-se
           </Button>
         </div>
-        <div className="mt-4 p-3 bg-muted rounded-lg text-sm">
-          <p className="font-medium mb-2">Contas de teste:</p>
-          <p>Admin: admin@jobsearch.com</p>
-          <p>Usuário: joao@email.com</p>
-          <p className="text-muted-foreground mt-1">Qualquer senha funciona</p>
-        </div>
       </CardContent>
     </Card>
   )

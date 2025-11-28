@@ -1,12 +1,10 @@
 "use client"
 
-import type React from "react"
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { X, Plus, Trash2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -48,12 +46,11 @@ export function CVForm() {
 
   const [experiencias, setExperiencias] = useState<Experience[]>([])
   const [competencias, setCompetencias] = useState<Skill[]>([])
-
+  const [newSkill, setNewSkill] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
   const apiUrl = "http://localhost:8000"
-
   const getAuthHeaders = () => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${user?.token}`,
@@ -65,10 +62,9 @@ export function CVForm() {
     async function fetchData() {
       try {
         const headers = getAuthHeaders()
-
         const [expRes, compRes] = await Promise.all([
           fetch(`${apiUrl}/experiencias/user/${user.id}`, { headers }),
-          fetch(`${apiUrl}/competencias/user/${user.id}`, { headers }),
+          fetch(`${apiUrl}/users/${user.id}/competencias`, { headers }),
         ])
 
         if (expRes.ok) {
@@ -81,7 +77,7 @@ export function CVForm() {
           setCompetencias(raw.map(mapSkillFromBackend))
         }
       } catch (err) {
-        console.error(err)
+        console.error("Erro ao carregar dados do CV:", err)
       } finally {
         setIsLoading(false)
       }
@@ -90,6 +86,7 @@ export function CVForm() {
     fetchData()
   }, [user])
 
+  // ----- Experiences -----
   async function addExperience() {
     const newExp: Experience = {
       id: "",
@@ -98,14 +95,7 @@ export function CVForm() {
       years: 0,
     }
 
-    const res = await fetch(`${apiUrl}/experiencias/`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(mapExperienceToBackend(newExp, user!.id)),
-    })
-
-    const saved = mapExperienceFromBackend(await res.json())
-    setExperiencias([...experiencias, saved])
+    setExperiencias([...experiencias, newExp])
   }
 
   function updateExperience(index: number, field: keyof Experience, value: string | number) {
@@ -114,8 +104,21 @@ export function CVForm() {
     setExperiencias(updated)
   }
 
-  async function persistExperience(exp: Experience) {
-    if (!exp.id) return
+  async function persistExperience(exp: Experience, index: number) {
+    if (!exp.id) {
+      const res = await fetch(`${apiUrl}/experiencias/`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(mapExperienceToBackend(exp, user!.id)),
+      })
+
+      const saved = mapExperienceFromBackend(await res.json())
+
+      const updated = [...experiencias]
+      updated[index] = saved
+      setExperiencias(updated)
+      return
+    }
 
     await fetch(`${apiUrl}/experiencias/${exp.id}`, {
       method: "PUT",
@@ -132,23 +135,27 @@ export function CVForm() {
     setExperiencias(experiencias.filter((e) => Number(e.id) !== expId))
   }
 
-  const [newSkill, setNewSkill] = useState("")
-
   async function addCompetencia() {
     if (!newSkill.trim()) return
 
     const payload = mapSkillToBackend({ id: 0, name: newSkill })
-
-    const res = await fetch(`${apiUrl}/competencias/`, {
+    const createRes = await fetch(`${apiUrl}/competencias/`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
     })
 
-    const saved = mapSkillFromBackend(await res.json())
-    setCompetencias([...competencias, saved])
+    const created = mapSkillFromBackend(await createRes.json())
+
+    await fetch(`${apiUrl}/users/${user!.id}/competencias/${created.id}`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    })
+
+    setCompetencias([...competencias, created])
     setNewSkill("")
   }
+
 
   async function removeCompetencia(id: number) {
     await fetch(`${apiUrl}/competencias/${id}`, {
@@ -159,104 +166,159 @@ export function CVForm() {
   }
 
   async function saveAll() {
+    if (!user) return
     setIsSaving(true)
 
     try {
-      for (const exp of experiencias) {
-        if (exp.id) await persistExperience(exp)
+      const updatedExperiences: Experience[] = []
+
+      for (let i = 0; i < experiencias.length; i++) {
+        const exp = experiencias[i]
+
+        if (!exp.company && !exp.position && !exp.years) {
+          continue
+        }
+
+        let savedExp: Experience
+
+        if (!exp.id) {
+          const res = await fetch(`${apiUrl}/experiencias/`, {
+            method: "POST",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(mapExperienceToBackend(exp, user.id)),
+          })
+          const data = await res.json()
+          savedExp = mapExperienceFromBackend(data)
+        } else {
+          const res = await fetch(`${apiUrl}/experiencias/${exp.id}`, {
+            method: "PUT",
+            headers: getAuthHeaders(),
+            body: JSON.stringify(mapExperienceToBackend(exp, user.id)),
+          })
+          const data = await res.json()
+          savedExp = mapExperienceFromBackend(data)
+        }
+
+        updatedExperiences.push(savedExp)
       }
+
+      setExperiencias(updatedExperiences)
 
       toast({
         title: "Informações salvas!",
         description: "Experiências e competências foram atualizadas.",
+      })
+    } catch (err: any) {
+      console.error("Erro ao salvar experiências:", err)
+      toast({
+        title: "Erro",
+        description: err.message || "Não foi possível salvar as experiências",
+        variant: "destructive",
       })
     } finally {
       setIsSaving(false)
     }
   }
 
-  if (isLoading) return <p>Carregando...</p>
+  if (isLoading) return <p className="text-muted-foreground">Carregando...</p>
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
+      {/* Competências */}
       <Card>
         <CardHeader>
-          <CardTitle>Meu Perfil Profissional</CardTitle>
-          <CardDescription>Gerencie sua experiência e competências</CardDescription>
+          <CardTitle>Competências</CardTitle>
+          <CardDescription>Adicione, visualize ou remova competências</CardDescription>
         </CardHeader>
         <CardContent>
-          
-          {/* ---------------- SKILLS ---------------- */}
-          <div className="space-y-4 mb-8">
-            <h3 className="text-lg font-semibold">Competências</h3>
-
-            <div className="flex gap-2">
-              <Input
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                placeholder="Ex: React, Docker..."
-              />
-              <Button onClick={addCompetencia}>Adicionar</Button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {competencias.map((c) => (
-                <Badge key={c.id} variant="secondary" className="flex items-center gap-1">
-                  {c.name}
-                  <X className="h-3 w-3 cursor-pointer" onClick={() => removeCompetencia(c.id)} />
-                </Badge>
-              ))}
-            </div>
+          <div className="flex gap-2 mb-4">
+            <Input
+              placeholder="Ex: React, Docker..."
+              value={newSkill}
+              onChange={(e) => setNewSkill(e.target.value)}
+            />
+            <Button onClick={addCompetencia}>
+              <Plus className="h-4 w-4 mr-2" /> Adicionar
+            </Button>
           </div>
+          <div className="flex flex-wrap gap-2">
+            {competencias.map((c) => (
+              <Badge key={c.id} variant="secondary" className="flex items-center gap-1">
+                {c.name}
+                <X className="h-3 w-3 cursor-pointer" onClick={() => removeCompetencia(c.id)} />
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-          {/* ---------------- EXPERIENCES ---------------- */}
+      {/* Experiências */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Experiências Profissionais</CardTitle>
+          <CardDescription>Adicione, visualize ou remova experiências</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-end mb-4">
+            <Button variant="outline" onClick={addExperience}>
+              <Plus className="h-4 w-4 mr-2" /> Adicionar Experiência
+            </Button>
+          </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Experiências</h3>
-              <Button variant="outline" onClick={addExperience}>
-                <Plus className="h-4 w-4 mr-2" />
-                Adicionar
-              </Button>
-            </div>
-
             {experiencias.map((exp, index) => (
-              <Card key={exp.id ?? index}>
+              <Card key={exp.id || index}>
                 <CardContent className="pt-6">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center">
                     <h4 className="font-medium">Experiência {index + 1}</h4>
-                    {exp.id && (
-                      <Button variant="ghost" size="sm" onClick={() => deleteExperience(Number(exp.id))}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                      {exp.id && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteExperience(Number(exp.id))}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div className="space-y-2">
                       <Label>Empresa</Label>
                       <Input
                         value={exp.company}
-                        onChange={(e) => updateExperience(index, "company", e.target.value)}
-                        onBlur={() => persistExperience(exp)}
+                        onChange={(e) =>
+                          setExperiencias((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, company: e.target.value } : item
+                            )
+                          )
+                        }
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label>Cargo</Label>
                       <Input
                         value={exp.position}
-                        onChange={(e) => updateExperience(index, "position", e.target.value)}
-                        onBlur={() => persistExperience(exp)}
+                        onChange={(e) =>
+                          setExperiencias((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, position: e.target.value } : item
+                            )
+                          )
+                        }
                       />
                     </div>
-
                     <div className="space-y-2">
                       <Label>Anos</Label>
                       <Input
                         type="number"
                         value={exp.years}
-                        onChange={(e) => updateExperience(index, "years", Number(e.target.value))}
-                        onBlur={() => persistExperience(exp)}
+                        onChange={(e) =>
+                          setExperiencias((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, years: Number(e.target.value) } : item
+                            )
+                          )
+                        }
                       />
                     </div>
                   </div>
@@ -264,8 +326,7 @@ export function CVForm() {
               </Card>
             ))}
           </div>
-
-          <div className="pt-6">
+          <div className="pt-4">
             <Button onClick={saveAll} disabled={isSaving}>
               {isSaving ? "Salvando..." : "Salvar tudo"}
             </Button>
@@ -273,5 +334,4 @@ export function CVForm() {
         </CardContent>
       </Card>
     </div>
-  )
-}
+  )}

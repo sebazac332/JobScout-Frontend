@@ -27,7 +27,7 @@ export default function JobsPage() {
   useEffect(() => {
     if (isLoading) return
     if (!user) router.replace("/auth")
-    if (!isAdmin) router.replace("/unauthorized")
+    if (!isAdmin) router.replace("/auth")
   }, [isLoading, user, isAdmin, router])
 
   useEffect(() => {

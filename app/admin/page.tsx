@@ -7,7 +7,6 @@ import { useAuth } from "@/hooks/useAuth"
 import { AdminLayout } from "@/components/admin/admin-layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Building2, Briefcase, Users, TrendingUp } from "lucide-react"
-import { mockCompanies, mockJobs, mockApplications } from "@/lib/mock-data"
 
 export default function AdminDashboard() {
 
@@ -124,13 +123,6 @@ export default function AdminDashboard() {
       description: "Total de candidaturas",
       icon: Users,
       color: "text-purple-600",
-    },
-    {
-      title: "Taxa de Conversão",
-      value: "Not sure if i will include this",
-      description: "Candidaturas aceitas",
-      icon: TrendingUp,
-      color: "text-orange-600",
     },
   ]
 

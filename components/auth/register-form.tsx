@@ -32,7 +32,6 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
 
     try {
       await register(email, password, name, cpf, userType, {
-        phone: userType === "admin" ? phone : undefined,
         workArea: userType === "user" ? workArea : undefined,
         educationLevel: userType === "user" ? educationLevel : undefined,
       })
