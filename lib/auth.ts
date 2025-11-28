@@ -2,6 +2,10 @@
 
 import type { User } from "./types"
 
+const API_URL = "https://jobscout-main.up.railway.app"
+const AUTH_API_URL = "https://jobscout-auth-production.up.railway.app"
+
+
 export const getStoredUser = (): User | null => {
   if (typeof window === "undefined") return null
 
@@ -24,7 +28,7 @@ export const login = async (email: string, password: string): Promise<User> => {
   formData.append("username", email)
   formData.append("password", password)
 
-  const res = await fetch("http://localhost:8001/auth/token", {
+  const res = await fetch(`${AUTH_API_URL}/auth/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData.toString(),
@@ -38,7 +42,7 @@ export const login = async (email: string, password: string): Promise<User> => {
   const { access_token } = await res.json()
 
   const verifyRes = await fetch(
-    `http://localhost:8001/auth/verify?token=${access_token}`
+    `${AUTH_API_URL}/auth/verify?token=${access_token}`
   )
   const verifyData = await verifyRes.json()
 
@@ -46,8 +50,8 @@ export const login = async (email: string, password: string): Promise<User> => {
 
   const profileRes = await fetch(
     role === "admin"
-      ? "http://localhost:8000/admins/me"
-      : "http://localhost:8000/users/me",
+      ? `${API_URL}/admins/me`
+      : `${API_URL}/users/me`,
     {
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -89,8 +93,8 @@ export const register = async (
 ): Promise<User> => {
   const url =
     role === "admin"
-      ? "http://localhost:8000/admins/"
-      : "http://localhost:8000/users/"
+      ? `${API_URL}/admins/`
+      : `${API_URL}/users/`
 
   const payload =
     role === "admin"

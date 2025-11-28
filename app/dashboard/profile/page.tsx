@@ -22,6 +22,7 @@ export default function ProfilePage() {
     phone: "",
     cpf: "",
   })
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   useEffect(() => {
     if (!user) return
@@ -37,7 +38,6 @@ export default function ProfilePage() {
 
   if (!user) return null
 
-  // 🔥 Normalized user for viewing section
   const normalizedUser = {
     name: user.name ?? user.nome ?? "",
     email: user.email ?? "",
@@ -51,7 +51,7 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/users/${user.id}`, {
+      const res = await fetch(`${API_URL}/users/${user.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState([])
   const [applications, setApplications] = useState([])
   const [loadingData, setLoadingData] = useState(true)
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   useEffect(() => {
     if (isLoading) return
@@ -38,13 +39,13 @@ export default function AdminDashboard() {
         if (!token) throw new Error("No token available")
 
         const [companiesRes, jobsRes, applicationsRes] = await Promise.all([
-          fetch("http://localhost:8000/empresas/admin", {
+          fetch(`${API_URL}/empresas/admin`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          fetch("http://localhost:8000/vagas/admin", {
+          fetch(`${API_URL}/vagas/admin`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
-          fetch("http://localhost:8000/vagas/admin-with-applications", {
+          fetch(`${API_URL}/vagas/admin-with-applications`, {
             headers: { Authorization: `Bearer ${token}` }
           }),
         ])

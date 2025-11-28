@@ -10,6 +10,7 @@ import { getStoredUser } from "@/lib/auth"
 export default function AdminApplicationsPage() {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const API_URL = "https://jobscout-main.up.railway.app";
 
   useEffect(() => {
     fetchApplications()
@@ -21,7 +22,7 @@ export default function AdminApplicationsPage() {
     if (!token) throw new Error("No token available")
 
     try {
-      const res = await fetch("http://localhost:8000/vagas/admin-with-applications", {
+      const res = await fetch(`${API_URL}/vagas/admin-with-applications`, {
         headers: {
           Authorization: `Bearer ${token}`
         }

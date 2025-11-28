@@ -50,7 +50,8 @@ export function CVForm() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
 
-  const apiUrl = "http://localhost:8000"
+  const API_URL = "https://jobscout-main.up.railway.app"
+
   const getAuthHeaders = () => ({
     "Content-Type": "application/json",
     Authorization: `Bearer ${user?.token}`,
@@ -63,8 +64,8 @@ export function CVForm() {
       try {
         const headers = getAuthHeaders()
         const [expRes, compRes] = await Promise.all([
-          fetch(`${apiUrl}/experiencias/user/${user.id}`, { headers }),
-          fetch(`${apiUrl}/users/${user.id}/competencias`, { headers }),
+          fetch(`${API_URL}/experiencias/user/${user.id}`, { headers }),
+          fetch(`${API_URL}/users/${user.id}/competencias`, { headers }),
         ])
 
         if (expRes.ok) {
@@ -106,7 +107,7 @@ export function CVForm() {
 
   async function persistExperience(exp: Experience, index: number) {
     if (!exp.id) {
-      const res = await fetch(`${apiUrl}/experiencias/`, {
+      const res = await fetch(`${API_URL}/experiencias/`, {
         method: "POST",
         headers: getAuthHeaders(),
         body: JSON.stringify(mapExperienceToBackend(exp, user!.id)),
@@ -120,7 +121,7 @@ export function CVForm() {
       return
     }
 
-    await fetch(`${apiUrl}/experiencias/${exp.id}`, {
+    await fetch(`${API_URL}/experiencias/${exp.id}`, {
       method: "PUT",
       headers: getAuthHeaders(),
       body: JSON.stringify(mapExperienceToBackend(exp, user!.id)),
@@ -128,7 +129,7 @@ export function CVForm() {
   }
 
   async function deleteExperience(expId: number) {
-    await fetch(`${apiUrl}/experiencias/${expId}`, {
+    await fetch(`${API_URL}/experiencias/${expId}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     })
@@ -139,7 +140,7 @@ export function CVForm() {
     if (!newSkill.trim()) return
 
     const payload = mapSkillToBackend({ id: 0, name: newSkill })
-    const createRes = await fetch(`${apiUrl}/competencias/`, {
+    const createRes = await fetch(`${API_URL}/competencias/`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(payload),
@@ -147,7 +148,7 @@ export function CVForm() {
 
     const created = mapSkillFromBackend(await createRes.json())
 
-    await fetch(`${apiUrl}/users/${user!.id}/competencias/${created.id}`, {
+    await fetch(`${API_URL}/users/${user!.id}/competencias/${created.id}`, {
       method: "POST",
       headers: getAuthHeaders(),
     })
@@ -158,7 +159,7 @@ export function CVForm() {
 
 
   async function removeCompetencia(id: number) {
-    await fetch(`${apiUrl}/competencias/${id}`, {
+    await fetch(`${API_URL}/competencias/${id}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
     })
@@ -182,7 +183,7 @@ export function CVForm() {
         let savedExp: Experience
 
         if (!exp.id) {
-          const res = await fetch(`${apiUrl}/experiencias/`, {
+          const res = await fetch(`${API_URL}/experiencias/`, {
             method: "POST",
             headers: getAuthHeaders(),
             body: JSON.stringify(mapExperienceToBackend(exp, user.id)),
@@ -190,7 +191,7 @@ export function CVForm() {
           const data = await res.json()
           savedExp = mapExperienceFromBackend(data)
         } else {
-          const res = await fetch(`${apiUrl}/experiencias/${exp.id}`, {
+          const res = await fetch(`${API_URL}/experiencias/${exp.id}`, {
             method: "PUT",
             headers: getAuthHeaders(),
             body: JSON.stringify(mapExperienceToBackend(exp, user.id)),

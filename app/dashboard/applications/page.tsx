@@ -30,13 +30,14 @@ export default function ApplicationsPage() {
   const { user } = useAuth()
   const [userApplications, setUserApplications] = useState<(ApplicationAPI["app"] & { job: Job })[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   useEffect(() => {
     const fetchData = async () => {
       if (!user) return
 
       try {
-        const res = await fetch(`http://localhost:8000/users/${user.id}/applications`)
+        const res = await fetch(`${API_URL}/users/${user.id}/applications`)
         const data: ApplicationAPI[] = await res.json()
 
         console.log("RAW APPLICATION DATA:", data)

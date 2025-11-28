@@ -21,12 +21,13 @@ export function JobSearch({ userId, onApply }: JobSearchProps) {
   const [companies, setCompanies] = useState<any[]>([])
   const [userCompetencias, setUserCompetencias] = useState<string[]>([])
   const [appliedJobs, setAppliedJobs] = useState<number[]>([])
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   const fetchJobs = async () => {
-    const resJobs = await fetch("http://localhost:8000/vagas")
-    const resCompanies = await fetch("http://localhost:8000/empresas")
-    const resCompetencias = await fetch(`http://localhost:8000/users/${userId}/competencias`)
-    const resApplications = await fetch(`http://localhost:8000/users/${userId}/applications`)
+    const resJobs = await fetch(`${API_URL}/vagas`)
+    const resCompanies = await fetch(`${API_URL}/empresas`)
+    const resCompetencias = await fetch(`${API_URL}/users/${userId}/competencias`)
+    const resApplications = await fetch(`${API_URL}/users/${userId}/applications`)
 
     const jobsData = await resJobs.json()
     const companiesData = await resCompanies.json()

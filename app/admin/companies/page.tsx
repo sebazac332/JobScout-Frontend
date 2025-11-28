@@ -20,6 +20,7 @@ export default function CompaniesPage() {
   const { toast } = useToast()
   const { user, isLoading, isAdmin } = useAuth()
   const router = useRouter()
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   useEffect(() => {
     if (isLoading) return
@@ -45,7 +46,7 @@ export default function CompaniesPage() {
       const token = user?.token
       if (!token) return
 
-      const res = await fetch("http://localhost:8000/empresas/admin", {
+      const res = await fetch(`${API_URL}/empresas/admin`, {
       headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -78,7 +79,7 @@ export default function CompaniesPage() {
       const token = user?.token
       if (!token) return
 
-      const res = await fetch("http://localhost:8000/empresas/admin", {
+      const res = await fetch(`${API_URL}/empresas/admin`, {
         headers: { Authorization: `Bearer ${token}` },
       })
 
@@ -116,8 +117,8 @@ export default function CompaniesPage() {
 
       const method = editingCompany ? "PUT" : "POST"
       const url = editingCompany
-        ? `http://localhost:8000/empresas/${company.id}`
-        : "http://localhost:8000/empresas"
+        ? `${API_URL}/empresas/${company.id}`
+        : `${API_URL}/empresas`
 
       const res = await fetch(url, {
         method,
@@ -160,7 +161,7 @@ export default function CompaniesPage() {
     try {
       const token = user?.token
       if (!token) throw new Error("Token não encontrado")
-      const res = await fetch(`http://localhost:8000/empresas/${company.id}`, {
+      const res = await fetch(`${API_URL}/empresas/${company.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })

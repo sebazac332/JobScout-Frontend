@@ -23,6 +23,7 @@ export default function JobsPage() {
   const { toast } = useToast()
   const { user, isLoading, isAdmin } = useAuth()
   const router = useRouter()
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   useEffect(() => {
     if (isLoading) return
@@ -37,7 +38,7 @@ export default function JobsPage() {
         const token = user?.token
         if (!token) return
 
-        const res = await fetch("http://localhost:8000/vagas/admin", {
+        const res = await fetch(`${API_URL}/vagas/admin`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         const data = await res.json()
@@ -74,7 +75,7 @@ export default function JobsPage() {
         const token = user?.token
         if (!token) return
 
-        const res = await fetch("http://localhost:8000/empresas/admin", {
+        const res = await fetch(`${API_URL}/empresas/admin`, {
           headers: { Authorization: `Bearer ${token}` },
         })
         if (!res.ok) throw new Error("Erro ao buscar empresas")
@@ -114,8 +115,8 @@ export default function JobsPage() {
 
       const url =
         method === "PUT"
-          ? `http://localhost:8000/vagas/${job.id}`
-          : "http://localhost:8000/vagas"
+          ? `${API_URL}/vagas/${job.id}`
+          : `${API_URL}/vagas`
 
       const res = await fetch(url, {
         method,
@@ -137,13 +138,13 @@ export default function JobsPage() {
       const saved = await res.json()
       const vagaId = saved.id
 
-      await fetch(`http://localhost:8000/vagas/${vagaId}/competencias`, {
+      await fetch(`${API_URL}/vagas/${vagaId}/competencias`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
 
       const allCompetenciasRes = await fetch(
-        "http://localhost:8000/competencias/",
+        `${API_URL}/competencias/`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -157,7 +158,7 @@ export default function JobsPage() {
 
         if (!competencia) {
           const compRes = await fetch(
-            "http://localhost:8000/competencias/",
+            `${API_URL}/competencias/`,
             {
               method: "POST",
               headers: {
@@ -171,7 +172,7 @@ export default function JobsPage() {
         }
 
         await fetch(
-          `http://localhost:8000/vagas/${vagaId}/competencias/${competencia.id}`,
+          `${API_URL}/vagas/${vagaId}/competencias/${competencia.id}`,
           {
            method: "POST",
             headers: { Authorization: `Bearer ${token}` },
@@ -223,7 +224,7 @@ export default function JobsPage() {
     try {
       const token = user?.token
       if (!token) throw new Error("No token available")
-      const res = await fetch(`http://localhost:8000/vagas/${job.id}`, {
+      const res = await fetch(`${API_URL}/vagas/${job.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       })
