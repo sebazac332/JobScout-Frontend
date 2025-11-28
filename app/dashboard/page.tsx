@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth"
 export default function DashboardPage() {
   const { user } = useAuth()
   const { toast } = useToast()
+  const API_URL = "https://jobscout-main.up.railway.app"
 
   const handleApply = async (job: Job) => {
     if (!user) return
@@ -17,7 +18,7 @@ export default function DashboardPage() {
       const token = user?.token
       if (!token) throw new Error("No token available")
 
-      const res = await fetch(`http://localhost:8000/vagas/${job.id}/apply/${user.id}`, {
+      const res = await fetch(`${API_URL}/vagas/${job.id}/apply/${user.id}`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
